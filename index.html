@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>원소 산성비 게임 (Chemical Acid Rain)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #020617;
+            color: white;
+            overflow: hidden;
+            /* 모바일에서 브라우저 UI 스크롤 방지 */
+            touch-action: none;
+            user-select: none;
+            /* 모바일 브라우저 하단바 등을 고려한 동적 높이 */
+            height: 100dvh; 
+        }
+
+        /* 배경 화학 분자 부유 효과 */
+        .background-molecules {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+        .molecule {
+            position: absolute;
+            color: rgba(56, 189, 248, 0.05);
+            font-size: 4rem;
+            animation: floatMolecule 20s linear infinite;
+        }
+        @keyframes floatMolecule {
+            0% { transform: translateY(110dvh) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10dvh) rotate(360deg); opacity: 0; }
+        }
+
+        /* 산성도 게이지 상단 영역 */
+        .acid-gauge-wrapper {
+            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.7) 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        /* 산성도 바 컨테이너 */
+        .acid-bar-container {
+            width: 100%;
+            height: 20px;
+            background-color: rgba(2, 6, 23, 0.8);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #475569;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.8);
+        }
+        @media (min-width: 640px) {
+            .acid-bar-container { height: 24px; border-radius: 12px; }
+        }
+
+        /* 산성도 바 */
+        .acid-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
+            width: 0%;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
+        }
+
+        /* 입력창 영역 */
+        .input-area {
+            background: rgba(15, 23, 42, 0.95);
+            border-top: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        }
+
+        input {
+            background: #0f172a !important;
+            transition: all 0.2s;
+            /* iOS 자동 확대 방지를 위해 16px 이상 유지 */
+            font-size: 16px !important; 
+        }
+        @media (min-width: 640px) {
+            input { font-size: 1.25rem !important; } /* text-xl */
+        }
+        input:focus {
+            outline: none;
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3) !important;
+        }
+
+        /* CRT 모니터 효과 */
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* 애니메이션 */
+        @keyframes flashRed {
+            0% { background-color: rgba(239, 68, 68, 0.3); }
+            100% { background-color: transparent; }
+        }
+        .damage-flash { animation: flashRed 0.3s ease-out; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-6px); }
+            40% { transform: translateX(6px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(3px); }
+        }
+        .shake-input { animation: shake 0.4s ease-in-out; border-color: #ef4444 !important; }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        .glitch-effect { animation: glitch 0.5s infinite; }
+
+        /* 모달 스타일 */
+        .modal-bg {
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+        }
+        
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* 사운드 버튼 공통 스타일 */
+        .sound-toggle-btn {
+            position: relative;
+            transition: all 0.2s;
+        }
+        .sound-toggle-btn:hover { transform: scale(1.1); }
+        .sound-toggle-btn:active { transform: scale(0.95); }
+        .sound-off::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: #ef4444;
+            top: 50%;
+            left: 0;
+            transform: rotate(-45deg);
+        }
+    </style>
+</head>
+<body class="w-full flex flex-col items-center justify-center relative overflow-hidden p-2 sm:p-4">
+
+    <!-- 배경 애니메이션 요소 -->
+    <div class="background-molecules" id="bgMolecules"></div>
+    
+    <!-- CRT 오버레이 & 데미지 효과 -->
+    <div id="damageOverlay" class="absolute inset-0 pointer-events-none z-40"></div>
+    <div class="crt-overlay absolute inset-0 z-30 pointer-events-none"></div>
+
+    <!-- 레벨업 알림 -->
+    <div id="levelUpNotice" class="absolute top-16 sm:top-24 z-50 bg-blue-600/90 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full font-black text-lg sm:text-xl shadow-[0_0_20px_rgba(37,99,235,0.6)] border border-blue-400 opacity-0 pointer-events-none transition-all duration-500 transform scale-50">
+        🚀 LEVEL UP!
+    </div>
+
+    <!-- 상단 UI -->
+    <div class="w-full max-w-3xl flex flex-row justify-between items-end px-2 sm:px-6 mb-2 sm:mb-4 z-20 flex-shrink-0">
+        <div class="flex flex-col">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <h1 class="text-2xl sm:text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 tracking-tighter filter drop-shadow-[0_0_5px_rgba(56,189,248,0.5)]">
+                    ACID RAIN
+                </h1>
+                <span class="px-1.5 py-0.5 rounded bg-gray-800 border border-gray-600 text-[9px] sm:text-[10px] text-gray-400 whitespace-nowrap">Ver. Chemistry</span>
+            </div>
+            <div class="hidden sm:flex items-center gap-4 mt-1">
+                <p class="text-xs text-gray-400">원소 기호를 입력하여 산성비를 막으세요!</p>
+                <div class="flex items-center gap-2 bg-gray-900/80 px-3 py-1 rounded-full border border-gray-700">
+                    <span class="text-xs font-bold text-gray-400">LEVEL</span>
+                    <span id="levelDisplayDesktop" class="text-lg font-orbitron font-bold text-green-400">1</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex flex-col items-end gap-1 sm:gap-2">
+            <!-- 사운드 토글 & 타이머 -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- 게임 화면 사운드 버튼 -->
+                <button id="gameSoundToggle" class="sound-toggle-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center text-gray-300 hover:text-white hover:border-blue-400 hover:bg-gray-700 text-sm">
+                    🔊
+                </button>
+                <div id="timerDisplay" class="text-lg sm:text-xl font-orbitron text-cyan-400 bg-gray-900/90 px-2 sm:px-3 py-0.5 sm:py-1 rounded border border-cyan-900 shadow-[0_0_10px_rgba(34,211,238,0.2)]">
+                    00:00
+                </div>
+            </div>
+            
+            <div class="flex items-baseline gap-1.5 sm:gap-2">
+                <!-- 모바일용 레벨 표시 (점수 옆에 작게 배치) -->
+                <span class="sm:hidden text-[10px] font-bold text-green-400 bg-gray-800/80 px-1.5 py-0.5 rounded border border-gray-700">LV.<span id="levelDisplayMobile">1</span></span>
+                <span class="text-[10px] sm:text-xs font-bold text-gray-500">SCORE</span>
+                <span id="scoreDisplay" class="text-2xl sm:text-4xl font-orbitron font-bold text-yellow-400 leading-none drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 게임 컨테이너 (Flex-1로 남은 공간 모두 차지) -->
+    <div class="relative flex-1 flex flex-col w-full max-w-3xl min-h-[250px] bg-gray-900 rounded-xl overflow-hidden shadow-2xl z-20 border border-gray-700/50">
+        
+        <!-- 산성도 게이지 영역 (z-index 30) -->
+        <div class="acid-gauge-wrapper absolute top-0 left-0 w-full p-2 sm:p-3 z-30">
+            <div class="flex justify-between items-center text-[10px] sm:text-xs text-gray-300 mb-1 sm:mb-1.5 px-1">
+                <span class="font-bold flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse"></span>
+                    ACIDITY (오염도)
+                </span>
+                <span id="acidText" class="font-orbitron font-bold text-green-400 text-xs sm:text-sm">0%</span>
+            </div>
+            <div class="acid-bar-container">
+                <div id="acidBar" class="acid-bar"></div>
+            </div>
+        </div>
+
+        <!-- 캔버스 래퍼 (유동적 높이) -->
+        <div id="canvasContainer" class="flex-1 relative w-full h-full bg-[rgba(15,23,42,0.5)] backdrop-blur-[3px] border-b-[3px] sm:border-b-4 border-[#334155]">
+            <!-- 부모 크기에 맞춰 꽉 차는 캔버스 -->
+            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+        </div>
+
+        <!-- 하단 입력창 (Form 태그 사용하여 모바일 키보드 호환성 향상) -->
+        <form id="inputForm" class="input-area p-2 sm:p-4 flex gap-2 sm:gap-3 items-center relative z-30 flex-shrink-0" onsubmit="event.preventDefault();">
+            <span class="text-blue-400 font-bold text-lg sm:text-xl animate-pulse hidden sm:inline">&gt;</span>
+            <input type="text" id="answerInput" 
+                class="flex-1 bg-gray-900 text-white font-mono px-3 py-2.5 sm:px-5 sm:py-3 rounded-lg border border-gray-700 placeholder-gray-500 focus:bg-gray-800" 
+                placeholder="원소 기호 입력" 
+                autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="none">
+            <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 sm:px-8 sm:py-3 rounded-lg font-bold transition shadow-lg shadow-blue-600/30 active:scale-95 text-sm sm:text-base whitespace-nowrap">
+                ENTER
+            </button>
+        </form>
+    </div>
+
+    <!-- 저작권 푸터 -->
+    <footer class="w-full text-center z-10 select-none mt-1 sm:mt-2 flex-shrink-0">
+        <p class="text-[10px] sm:text-[11px] text-gray-600 pb-1 sm:pb-0">Copyright ⓒ 송쌤과학. All rights reserved.</p>
+    </footer>
+
+    <!-- 시작 화면 모달 -->
+    <div id="startModal" class="modal-bg fixed inset-0 flex flex-col items-center justify-center z-50 p-4 text-center">
+        <div class="w-full max-w-md bg-gray-900/90 border border-gray-700 p-6 sm:p-8 rounded-2xl shadow-2xl relative max-h-[95dvh] overflow-y-auto">
+            
+            <div class="flex justify-between items-start mb-4">
+                <div class="text-5xl sm:text-7xl animate-bounce">🧪</div>
+                <div class="flex-1 text-center pl-2 sm:pl-4 pt-1 sm:pt-2">
+                     <h1 class="text-3xl sm:text-4xl font-black text-white mb-2 tracking-tight">원소 산성비</h1>
+                </div>
+                 <button id="startSoundToggle" class="sound-toggle-btn w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center text-gray-300 hover:text-white hover:border-blue-400 hover:bg-gray-700 transition">
+                    🔊
+                </button>
+            </div>
+            
+            <p class="text-sm sm:text-base text-gray-400 mb-6 font-medium">지구가 오염되기 전에 원소를 정화하세요!</p>
+            
+            <div class="bg-gray-800/80 p-4 sm:p-5 rounded-xl mb-6 text-left border border-gray-700">
+                <h3 class="text-yellow-400 font-bold mb-3 pb-2 border-b border-gray-600 flex items-center gap-2 text-sm sm:text-base">
+                    <span>📝</span> 게임 방법
+                </h3>
+                <ul class="space-y-2 text-gray-300 text-xs sm:text-sm">
+                    <li class="flex items-start gap-2"><span class="text-blue-400">1.</span> 떨어지는 <span class="text-blue-300 font-bold">원소 이름</span>(수소)을 확인합니다.</li>
+                    <li class="flex items-start gap-2"><span class="text-blue-400">2.</span> <span class="text-green-300 font-bold">영어 기호</span>(H)를 입력하고 <span class="bg-gray-700 px-1 rounded text-[10px] sm:text-xs border border-gray-500">Enter</span>를 누릅니다.</li>
+                    <li class="flex items-start gap-2"><span class="text-red-400">3.</span> 틀리면 <span class="text-red-400 font-bold">-50점</span>, 오염도가 증가하면 게임 종료!</li>
+                </ul>
+            </div>
+
+            <div class="flex gap-2 sm:gap-3">
+                <button id="studyBtn" class="flex-1 py-3 sm:py-4 bg-gray-700 hover:bg-gray-600 rounded-xl font-bold text-white transition border border-gray-600 hover:border-gray-400 group flex flex-col items-center justify-center">
+                    <span class="block text-xl sm:text-2xl mb-1 group-hover:scale-110 transition">📖</span>
+                    <span class="text-xs sm:text-sm">원소 공부</span>
+                </button>
+                <button id="startBtn" class="flex-[2] py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl font-bold text-white text-lg sm:text-xl shadow-[0_0_20px_rgba(37,99,235,0.4)] transition transform hover:scale-[1.02] active:scale-95">
+                    작전 개시
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 원소 공부 모달 -->
+    <div id="studyModal" class="hidden modal-bg fixed inset-0 flex flex-col items-center justify-center z-[60] p-4">
+        <div class="w-full max-w-2xl bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85dvh]">
+            <div class="p-4 sm:p-5 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
+                <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                    <span>📖</span> 원소 주기율표 데이터
+                </h2>
+                <button id="closeStudyBtn" class="w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 text-gray-300 hover:text-white transition flex items-center justify-center font-bold text-lg">&times;</button>
+            </div>
+            <div class="overflow-y-auto p-0 flex-1 scrollbar-hide">
+                <table class="w-full text-xs sm:text-sm text-left text-gray-300">
+                    <thead class="text-[10px] sm:text-xs text-gray-400 uppercase bg-gray-800/80 sticky top-0 z-10 backdrop-blur-sm">
+                        <tr>
+                            <th class="px-4 sm:px-6 py-3 sm:py-4">번호</th>
+                            <th class="px-4 sm:px-6 py-3 sm:py-4">원소 기호</th>
+                            <th class="px-4 sm:px-6 py-3 sm:py-4">한글 명칭</th>
+                        </tr>
+                    </thead>
+                    <tbody id="elementTableBody" class="divide-y divide-gray-800 bg-gray-900/50">
+                        <!-- JS로 데이터 주입 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 게임 오버 모달 -->
+    <div id="gameOverModal" class="hidden modal-bg fixed inset-0 flex flex-col items-center justify-center z-50 p-4">
+        <div id="resultCard" class="w-full max-w-md bg-gray-900 border border-gray-700 p-6 sm:p-8 rounded-2xl shadow-2xl relative overflow-hidden mb-4 sm:mb-6">
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent pointer-events-none"></div>
+            
+            <h2 class="text-4xl sm:text-5xl font-black text-red-500 mb-1 sm:mb-2 glitch-effect text-center tracking-tighter">GAME OVER</h2>
+            <p class="text-center text-xs sm:text-sm text-gray-500 mb-6 sm:mb-8 uppercase tracking-[0.2em] font-orbitron">Mission Failed</p>
+            
+            <div class="space-y-2.5 sm:space-y-3 relative z-10">
+                <div class="bg-gray-800/60 p-3 sm:p-4 rounded-xl border border-gray-700 flex justify-between items-center">
+                    <span class="text-[10px] sm:text-xs text-gray-400 font-bold">FINAL SCORE</span>
+                    <span class="text-2xl sm:text-3xl font-orbitron font-bold text-yellow-400" id="finalScore">0</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2.5 sm:gap-3">
+                    <div class="bg-gray-800/60 p-3 sm:p-4 rounded-xl border border-gray-700">
+                        <div class="text-[10px] sm:text-xs text-gray-400 font-bold mb-1">LEVEL</div>
+                        <div class="text-xl sm:text-2xl font-orbitron text-green-400" id="finalLevel">1</div>
+                    </div>
+                    <div class="bg-gray-800/60 p-3 sm:p-4 rounded-xl border border-gray-700">
+                        <div class="text-[10px] sm:text-xs text-gray-400 font-bold mb-1">TIME</div>
+                        <div class="text-xl sm:text-2xl font-orbitron text-cyan-400" id="finalTime">00:00</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 sm:mt-6 text-[9px] sm:text-[10px] text-gray-600 text-center border-t border-gray-800 pt-3 sm:pt-4">
+                Acid Rain Project | Designed by 송쌤과학
+            </div>
+        </div>
+
+        <div class="flex gap-2 w-full max-w-md">
+            <button id="homeBtn" class="px-4 sm:px-5 py-3 sm:py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition font-bold border border-gray-600 flex flex-col items-center justify-center hover:-translate-y-1">
+                <span class="text-lg sm:text-xl leading-none">🏠</span>
+            </button>
+            <button id="restartBtn" class="flex-1 py-3 sm:py-4 bg-red-600 hover:bg-red-500 text-white rounded-xl transition text-base sm:text-lg font-bold shadow-lg shadow-red-900/40 hover:-translate-y-1">
+                다시 시작
+            </button>
+            <button id="captureBtn" class="px-4 sm:px-5 py-3 sm:py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition border border-gray-600 hover:border-gray-500 flex items-center justify-center gap-2 hover:-translate-y-1">
+                <span class="text-lg sm:text-xl leading-none">📷</span>
+            </button>
+        </div>
+    </div>
+
+<script>
+/**
+ * 사운드 매니저 (Web Audio API)
+ */
+class SoundManager {
+    constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.isMuted = false;
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.connect(this.ctx.destination);
+        this.masterGain.gain.value = 0.3; // 기본 볼륨
+    }
+
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        this.masterGain.gain.value = this.isMuted ? 0 : 0.3;
+        return this.isMuted;
+    }
+
+    playTone(freq, type, duration, startTime = 0) {
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        
+        osc.type = type;
+        osc.frequency.value = freq;
+        
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+        
+        osc.start(this.ctx.currentTime + startTime);
+        gain.gain.setValueAtTime(1, this.ctx.currentTime + startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + startTime + duration);
+        
+        osc.stop(this.ctx.currentTime + startTime + duration);
+    }
+
+    playSuccess() {
+        this.playTone(523.25, 'sine', 0.1, 0);   // C5
+        this.playTone(659.25, 'sine', 0.1, 0.1); // E5
+        this.playTone(783.99, 'sine', 0.3, 0.2); // G5
+    }
+
+    playFail() {
+        this.playTone(150, 'sawtooth', 0.3, 0);
+        this.playTone(100, 'sawtooth', 0.3, 0.1);
+    }
+
+    playLevelUp() {
+        this.playTone(440, 'triangle', 0.1, 0);
+        this.playTone(554, 'triangle', 0.1, 0.1);
+        this.playTone(659, 'triangle', 0.1, 0.2);
+        this.playTone(880, 'triangle', 0.4, 0.3);
+    }
+
+    playGameOver() {
+        this.playTone(400, 'triangle', 0.3, 0);
+        this.playTone(300, 'triangle', 0.3, 0.3);
+        this.playTone(200, 'sawtooth', 0.8, 0.6);
+    }
+}
+
+/**
+ * 원소 데이터베이스
+ */
+const ELEMENTS = [
+    { atomic: 1, name: "수소", symbol: "H" },
+    { atomic: 2, name: "헬륨", symbol: "He" },
+    { atomic: 3, name: "리튬", symbol: "Li" },
+    { atomic: 4, name: "베릴륨", symbol: "Be" },
+    { atomic: 5, name: "붕소", symbol: "B" },
+    { atomic: 6, name: "탄소", symbol: "C" },
+    { atomic: 7, name: "질소", symbol: "N" },
+    { atomic: 8, name: "산소", symbol: "O" },
+    { atomic: 9, name: "플루오린", symbol: "F" },
+    { atomic: 10, name: "네온", symbol: "Ne" },
+    { atomic: 11, name: "나트륨", symbol: "Na" },
+    { atomic: 12, name: "마그네슘", symbol: "Mg" },
+    { atomic: 13, name: "알루미늄", symbol: "Al" },
+    { atomic: 14, name: "규소", symbol: "Si" },
+    { atomic: 15, name: "인", symbol: "P" },
+    { atomic: 16, name: "황", symbol: "S" },
+    { atomic: 17, name: "염소", symbol: "Cl" },
+    { atomic: 18, name: "아르곤", symbol: "Ar" },
+    { atomic: 19, name: "칼륨", symbol: "K" },
+    { atomic: 20, name: "칼슘", symbol: "Ca" },
+    { atomic: 24, name: "크롬", symbol: "Cr" },
+    { atomic: 25, name: "망가니즈", symbol: "Mn" },
+    { atomic: 26, name: "철", symbol: "Fe" },
+    { atomic: 28, name: "니켈", symbol: "Ni" },
+    { atomic: 29, name: "구리", symbol: "Cu" },
+    { atomic: 30, name: "아연", symbol: "Zn" },
+    { atomic: 35, name: "브로민", symbol: "Br" },
+    { atomic: 38, name: "스트론튬", symbol: "Sr" },
+    { atomic: 47, name: "은", symbol: "Ag" },
+    { atomic: 48, name: "카드뮴", symbol: "Cd" },
+    { atomic: 50, name: "주석", symbol: "Sn" },
+    { atomic: 53, name: "아이오딘", symbol: "I" },
+    { atomic: 56, name: "바륨", symbol: "Ba" },
+    { atomic: 78, name: "백금", symbol: "Pt" },
+    { atomic: 79, name: "금", symbol: "Au" },
+    { atomic: 80, name: "수은", symbol: "Hg" },
+    { atomic: 82, name: "납", symbol: "Pb" }
+].sort((a, b) => a.atomic - b.atomic);
+
+class AcidRainGame {
+    constructor() {
+        this.canvasContainer = document.getElementById('canvasContainer');
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.input = document.getElementById('answerInput');
+        this.inputForm = document.getElementById('inputForm');
+        this.timerDisplay = document.getElementById('timerDisplay');
+        this.soundManager = new SoundManager();
+        
+        // 초기 사이즈 설정 및 리사이즈 이벤트 바인딩
+        this.resize();
+        window.addEventListener('resize', () => {
+            // 모바일에서 스크롤/키보드 등에 의한 미세한 리사이즈 발생 시 딜레이 후 처리
+            clearTimeout(this.resizeTimer);
+            this.resizeTimer = setTimeout(() => this.resize(), 100);
+        });
+
+        this.words = [];
+        this.particles = [];
+        
+        this.score = 0;
+        this.acidity = 0;
+        this.maxAcidity = 100;
+        
+        this.level = 1;
+        this.gameTime = 0;
+        this.spawnRate = 2000;
+        this.baseSpeed = 0.6;
+        this.lastSpawnTime = 0;
+        
+        this.isPlaying = false;
+        this.animationId = null;
+
+        this.setupInput();
+        this.setupUI();
+        this.createBackgroundMolecules();
+    }
+
+    createBackgroundMolecules() {
+        const container = document.getElementById('bgMolecules');
+        const shapes = ['⬡', '⬢', '⌬', '⚛'];
+        
+        for (let i = 0; i < 15; i++) {
+            const div = document.createElement('div');
+            div.className = 'molecule';
+            div.innerText = shapes[Math.floor(Math.random() * shapes.length)];
+            div.style.left = `${Math.random() * 100}%`;
+            div.style.animationDuration = `${15 + Math.random() * 20}s`;
+            div.style.animationDelay = `${Math.random() * 10}s`;
+            div.style.fontSize = `${2 + Math.random() * 4}rem`;
+            container.appendChild(div);
+        }
+    }
+
+    resize() {
+        // 부모 컨테이너(canvasContainer)의 실제 크기에 맞춰 캔버스 크기 동적 조절
+        const width = this.canvasContainer.clientWidth;
+        const height = this.canvasContainer.clientHeight;
+        
+        // 크기가 0일 경우(숨겨져 있을 때 등) 업데이트 방지
+        if (width === 0 || height === 0) return;
+
+        this.canvas.width = width;
+        this.canvas.height = height;
+    }
+
+    reset() {
+        this.words = [];
+        this.particles = [];
+        this.score = 0;
+        this.acidity = 0;
+        
+        this.level = 1;
+        this.gameTime = 0;
+        this.baseSpeed = 0.6;
+        this.spawnRate = 2000;
+        
+        this.updateUI();
+        this.updateTimer();
+        this.input.value = '';
+        this.input.focus();
+    }
+
+    start() {
+        // AudioContext는 사용자 상호작용 후 시작해야 함
+        if (this.soundManager.ctx.state === 'suspended') {
+            this.soundManager.ctx.resume();
+        }
+        
+        // 캔버스 크기 한번 더 확인 (모달이 닫히면서 레이아웃 변경 대비)
+        this.resize();
+        
+        this.reset();
+        this.isPlaying = true;
+        this.lastTime = performance.now();
+        this.loop(this.lastTime);
+    }
+
+    spawnWord() {
+        const el = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+        
+        // 모바일에서는 글씨를 약간 작게 설정
+        const fontSize = this.canvas.width < 600 ? 18 : 22;
+        this.ctx.font = `bold ${fontSize}px "Noto Sans KR"`;
+        
+        const textWidth = this.ctx.measureText(el.name).width;
+        const maxWidth = this.canvas.width - textWidth - 20;
+        const x = Math.random() * maxWidth + 10;
+        
+        this.words.push({
+            name: el.name,
+            symbol: el.symbol,
+            x: x,
+            y: -30,
+            // 캔버스 높이에 비례하여 속도 약간 보정 (모바일에서도 비슷한 체감 속도)
+            speed: (this.baseSpeed + (Math.random() * 0.4)) * (this.canvas.height / 500), 
+            color: `hsl(${Math.random() * 60 + 180}, 100%, 75%)`,
+            glowColor: `hsl(${Math.random() * 60 + 180}, 100%, 50%)`
+        });
+    }
+
+    update(dt) {
+        this.gameTime += dt;
+        this.updateTimer();
+        
+        // 30초(30000ms)마다 레벨 업으로 변경
+        const calculatedLevel = Math.floor(this.gameTime / 30000) + 1;
+        if (calculatedLevel > this.level) {
+            this.levelUp(calculatedLevel);
+        }
+
+        if (performance.now() - this.lastSpawnTime > this.spawnRate) {
+            this.spawnWord();
+            this.lastSpawnTime = performance.now();
+        }
+
+        for (let i = this.words.length - 1; i >= 0; i--) {
+            const word = this.words[i];
+            word.y += word.speed * (dt / 16);
+
+            // 캔버스 하단에 닿았는지 체크
+            if (word.y > this.canvas.height - 10) {
+                this.takeDamage(10);
+                this.soundManager.playFail();
+                this.createExplosion(word.x, this.canvas.height, '#ef4444');
+                this.words.splice(i, 1);
+            }
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.02;
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+    }
+
+    levelUp(newLevel) {
+        this.level = newLevel;
+        this.baseSpeed = 0.6 + (this.level - 1) * 0.4;
+        this.spawnRate = Math.max(500, 2000 - (this.level - 1) * 200);
+
+        this.soundManager.playLevelUp();
+
+        document.getElementById('levelDisplayDesktop').innerText = this.level;
+        document.getElementById('levelDisplayMobile').innerText = this.level;
+        
+        const notice = document.getElementById('levelUpNotice');
+        notice.innerText = `🚀 LEVEL ${this.level}!`;
+        notice.classList.remove('opacity-0', 'scale-50');
+        notice.classList.add('opacity-100', 'scale-100'); 
+        
+        setTimeout(() => {
+            notice.classList.remove('opacity-100', 'scale-100');
+            notice.classList.add('opacity-0', 'scale-50');
+        }, 2000);
+    }
+
+    updateTimer() {
+        const totalSeconds = Math.floor(this.gameTime / 1000);
+        const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+        const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+        const timeString = `${minutes}:${seconds}`;
+        
+        if (this.timerDisplay) {
+            this.timerDisplay.innerText = timeString;
+        }
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // --- 바닥 오염도 시각화 ---
+        const groundHeight = 20;
+        const pollutionRatio = this.acidity / 100;
+        
+        const hue = 180 * (1 - pollutionRatio); 
+        const saturation = 50 + (pollutionRatio * 50); 
+        const lightness = 40 - (pollutionRatio * 20); 
+        
+        const groundGradient = this.ctx.createLinearGradient(0, this.canvas.height - groundHeight, 0, this.canvas.height);
+        groundGradient.addColorStop(0, `hsla(${hue}, ${saturation}%, ${lightness}%, 0.8)`);
+        groundGradient.addColorStop(1, `hsla(${hue}, ${saturation}%, ${Math.max(10, lightness - 10)}%, 1)`);
+
+        this.ctx.fillStyle = groundGradient;
+        this.ctx.fillRect(0, this.canvas.height - groundHeight, this.canvas.width, groundHeight);
+
+        // 오염 기포 효과
+        if (pollutionRatio > 0.2) {
+             this.ctx.fillStyle = `hsla(${hue}, 100%, 70%, 0.5)`;
+             const bubbles = Math.floor(pollutionRatio * (this.canvas.width / 100)); // 너비에 비례해 기포 개수 조정
+             for(let i=0; i<bubbles; i++) {
+                 const bx = Math.random() * this.canvas.width;
+                 const by = this.canvas.height - groundHeight - (Math.random() * 10);
+                 const bSize = Math.random() * 3 + 1;
+                 this.ctx.beginPath();
+                 this.ctx.arc(bx, by, bSize, 0, Math.PI*2);
+                 this.ctx.fill();
+             }
+        }
+
+        // 텍스트 스타일 (화면 크기에 맞춰 동적 변경)
+        const fontSize = this.canvas.width < 600 ? 18 : 22;
+        this.ctx.font = `bold ${fontSize}px "Noto Sans KR"`;
+        this.ctx.textAlign = 'left';
+        this.ctx.textBaseline = 'middle';
+        
+        this.words.forEach(word => {
+            // 네온 글로우 효과
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowColor = word.glowColor;
+            
+            // 텍스트
+            this.ctx.fillStyle = word.color;
+            this.ctx.fillText(word.name, word.x, word.y);
+            
+            // 빗물 꼬리
+            this.ctx.shadowBlur = 0;
+            const gradient = this.ctx.createLinearGradient(word.x, word.y - 10, word.x, word.y - 40);
+            gradient.addColorStop(0, word.color);
+            gradient.addColorStop(1, 'transparent');
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(word.x + 2, word.y - 30, 2, 20);
+        });
+
+        // 파티클
+        this.particles.forEach(p => {
+            this.ctx.globalAlpha = p.life;
+            this.ctx.fillStyle = p.color;
+            this.ctx.beginPath();
+            this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+        this.ctx.globalAlpha = 1.0;
+    }
+
+    loop(time) {
+        if (!this.isPlaying) return;
+
+        const dt = time - this.lastTime;
+        this.lastTime = time;
+
+        this.update(dt);
+        this.draw();
+
+        this.animationId = requestAnimationFrame(this.loop.bind(this));
+    }
+
+    checkAnswer() {
+        const val = this.input.value.trim().toLowerCase();
+        if (!val) return;
+
+        const sortedWords = this.words.map((w, i) => ({...w, originalIndex: i}))
+                                      .sort((a, b) => b.y - a.y);
+
+        const target = sortedWords.find(w => w.symbol.toLowerCase() === val);
+
+        if (target) {
+            const idx = this.words.findIndex(w => w === this.words[target.originalIndex] || (w.x === target.x && w.y === target.y));
+            if (idx !== -1) {
+                this.words.splice(idx, 1);
+                this.createExplosion(target.x + 20, target.y, '#60a5fa');
+                this.soundManager.playSuccess();
+                this.score += 100;
+                this.input.value = '';
+                this.updateUI();
+                
+                this.input.style.borderColor = '#4ade80';
+                setTimeout(() => this.input.style.borderColor = '#374151', 200);
+            }
+        } else {
+            this.score = Math.max(0, this.score - 50);
+            this.soundManager.playFail();
+            this.updateUI();
+            
+            this.input.classList.remove('shake-input');
+            void this.input.offsetWidth;
+            this.input.classList.add('shake-input');
+        }
+    }
+
+    takeDamage(amount) {
+        this.acidity += amount;
+        if (this.acidity >= 100) {
+            this.acidity = 100;
+            this.gameOver();
+        }
+        
+        const overlay = document.getElementById('damageOverlay');
+        overlay.classList.remove('damage-flash');
+        void overlay.offsetWidth;
+        overlay.classList.add('damage-flash');
+
+        this.updateUI();
+    }
+
+    createExplosion(x, y, color) {
+        for (let i = 0; i < 15; i++) {
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                radius: Math.random() * 3 + 1,
+                color: color,
+                life: 1.0
+            });
+        }
+    }
+
+    updateUI() {
+        document.getElementById('scoreDisplay').innerText = this.score;
+        document.getElementById('levelDisplayDesktop').innerText = this.level;
+        document.getElementById('levelDisplayMobile').innerText = this.level;
+        
+        const acidBar = document.getElementById('acidBar');
+        const acidText = document.getElementById('acidText');
+        
+        acidBar.style.width = `${this.acidity}%`;
+        acidText.innerText = `${this.acidity}%`;
+        
+        if (this.acidity > 70) {
+            acidText.className = 'font-orbitron font-bold text-red-500 animate-pulse text-xs sm:text-sm';
+            acidBar.style.background = 'linear-gradient(90deg, #ef4444, #b91c1c)';
+        } else if (this.acidity > 40) {
+            acidText.className = 'font-orbitron font-bold text-yellow-400 text-xs sm:text-sm';
+            acidBar.style.background = 'linear-gradient(90deg, #eab308, #ef4444)';
+        } else {
+            acidText.className = 'font-orbitron font-bold text-green-400 text-xs sm:text-sm';
+            acidBar.style.background = 'linear-gradient(90deg, #22c55e, #eab308)';
+        }
+    }
+
+    setupInput() {
+        // 첫 글자 대문자 처리
+        this.input.addEventListener('input', () => {
+            const val = this.input.value;
+            if (val.length > 0) {
+                this.input.value = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
+            }
+        });
+
+        // Form Submit (모바일 가상 키보드 호환)
+        this.inputForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.checkAnswer();
+            // 포커스 유지 (모바일 환경에 따라 다르게 작동할 수 있음)
+            this.input.focus();
+        });
+    }
+
+    setupUI() {
+        // 사운드 토글 동기화
+        const soundBtns = document.querySelectorAll('.sound-toggle-btn');
+        soundBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const isMuted = this.soundManager.toggleMute();
+                soundBtns.forEach(b => {
+                    b.innerHTML = isMuted ? '🔇' : '🔊';
+                    b.classList.toggle('sound-off', isMuted);
+                    b.classList.toggle('text-red-400', isMuted);
+                    b.classList.toggle('border-red-400', isMuted);
+                });
+            });
+        });
+
+        // 공부하기 모달
+        const studyModal = document.getElementById('studyModal');
+        const tableBody = document.getElementById('elementTableBody');
+
+        document.getElementById('studyBtn').addEventListener('click', () => {
+            tableBody.innerHTML = ELEMENTS.map(el => `
+                <tr class="hover:bg-gray-800 transition border-b border-gray-800/50">
+                    <td class="px-4 sm:px-6 py-2 sm:py-4 font-mono text-blue-300 font-bold">${el.atomic}</td>
+                    <td class="px-4 sm:px-6 py-2 sm:py-4 font-bold text-yellow-400 text-base sm:text-lg">${el.symbol}</td>
+                    <td class="px-4 sm:px-6 py-2 sm:py-4 text-white text-xs sm:text-sm">${el.name}</td>
+                </tr>
+            `).join('');
+            studyModal.classList.remove('hidden');
+        });
+
+        document.getElementById('closeStudyBtn').addEventListener('click', () => {
+            studyModal.classList.add('hidden');
+        });
+
+        // 캡처 버튼
+        document.getElementById('captureBtn').addEventListener('click', async () => {
+            const target = document.getElementById('resultCard');
+            const btn = document.getElementById('captureBtn');
+            const originalText = btn.innerHTML;
+            
+            try {
+                btn.innerHTML = '<span class="animate-spin text-sm">⏳</span>';
+                const canvas = await html2canvas(target, {
+                    backgroundColor: '#111827',
+                    scale: 2
+                });
+                
+                const link = document.createElement('a');
+                link.download = `AcidRain_Score_${this.score}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                btn.innerHTML = '<span class="text-sm">✅</span>';
+                setTimeout(() => btn.innerHTML = originalText, 2000);
+            } catch (err) {
+                console.error(err);
+                btn.innerHTML = '❌';
+                setTimeout(() => btn.innerHTML = originalText, 2000);
+            }
+        });
+    }
+
+    gameOver() {
+        this.isPlaying = false;
+        cancelAnimationFrame(this.animationId);
+        
+        this.soundManager.playGameOver();
+
+        document.getElementById('finalScore').innerText = this.score;
+        document.getElementById('finalLevel').innerText = this.level;
+        document.getElementById('finalTime').innerText = this.timerDisplay.innerText;
+        
+        const modal = document.getElementById('gameOverModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+const game = new AcidRainGame();
+
+document.getElementById('startBtn').addEventListener('click', () => {
+    document.getElementById('startModal').classList.add('hidden');
+    game.start();
+});
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+    document.getElementById('gameOverModal').classList.add('hidden');
+    document.getElementById('gameOverModal').classList.remove('flex');
+    game.reset();
+    game.start();
+});
+
+document.getElementById('homeBtn').addEventListener('click', () => {
+    document.getElementById('gameOverModal').classList.add('hidden');
+    document.getElementById('gameOverModal').classList.remove('flex');
+    document.getElementById('startModal').classList.remove('hidden');
+    game.reset();
+    game.isPlaying = false;
+});
+</script>
+</body>
+</html>
