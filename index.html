@@ -1,945 +1,3135 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>원소 산성비 게임 (Chemical Acid Rain)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#04070f">
 
-        body {
-            font-family: 'Noto Sans KR', sans-serif;
-            background-color: #020617;
-            color: white;
-            overflow: hidden;
-            /* 모바일에서 브라우저 UI 스크롤 방지 */
-            touch-action: none;
-            user-select: none;
-            /* 모바일 브라우저 하단바 등을 고려한 동적 높이 */
-            height: 100dvh; 
-        }
+<!-- 파비콘 (같은 폴더의 favicon.* 파일 사용) -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="alternate icon" href="favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="favicon-180.png">
+<title>원소 산성비 게임 V3 · ACID RAIN</title>
 
-        /* 배경 화학 분자 부유 효과 */
-        .background-molecules {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-            overflow: hidden;
-        }
-        .molecule {
-            position: absolute;
-            color: rgba(56, 189, 248, 0.05);
-            font-size: 4rem;
-            animation: floatMolecule 20s linear infinite;
-        }
-        @keyframes floatMolecule {
-            0% { transform: translateY(110dvh) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-10dvh) rotate(360deg); opacity: 0; }
-        }
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- 배달의민족 주아체(Jua) + 고운돋움(Gowun Dodum) -->
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
-        /* 산성도 게이지 상단 영역 */
-        .acid-gauge-wrapper {
-            background: linear-gradient(to bottom, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.7) 100%);
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-        }
+<style>
+/* ============================================================
+   원소 산성비 게임 V3  |  Design System
+   Font : Jua(배달의민족 주아) / Gowun Dodum(고운돋움)
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
 
-        /* 산성도 바 컨테이너 */
-        .acid-bar-container {
-            width: 100%;
-            height: 20px;
-            background-color: rgba(2, 6, 23, 0.8);
-            border-radius: 10px;
-            overflow: hidden;
-            border: 2px solid #475569;
-            box-shadow: inset 0 2px 6px rgba(0,0,0,0.8);
-        }
-        @media (min-width: 640px) {
-            .acid-bar-container { height: 24px; border-radius: 12px; }
-        }
+:root{
+  --bg0:#04070f;
+  --panel:rgba(13,21,42,.74);
+  --panel2:rgba(22,32,60,.55);
+  --stroke:rgba(130,175,255,.16);
+  --stroke2:rgba(130,175,255,.32);
+  --text:#e9f1ff;
+  --muted:#8ba0c6;
+  --cyan:#3fe3ff;
+  --sky:#5aa9ff;
+  --violet:#a78bfa;
+  --lime:#9bf06b;
+  --amber:#ffc53d;
+  --rose:#ff6b8b;
+  --gold:#ffd166;
+  --shadow:0 24px 60px rgba(0,0,0,.6);
+  --r-xl:26px; --r-lg:20px; --r-md:14px; --r-sm:10px;
+}
 
-        /* 산성도 바 */
-        .acid-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #22c55e, #eab308, #ef4444);
-            width: 0%;
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 0 15px rgba(34, 197, 94, 0.5);
-        }
+body{
+  font-family:'Gowun Dodum',-apple-system,BlinkMacSystemFont,'Malgun Gothic',sans-serif;
+  background:var(--bg0);
+  color:var(--text);
+  height:100dvh;
+  overflow:hidden;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  display:flex; flex-direction:column; align-items:center;
+  padding:8px 10px calc(6px + env(safe-area-inset-bottom));
+  gap:8px;
+}
+.jua{font-family:'Jua',sans-serif; letter-spacing:.01em}
 
-        /* 입력창 영역 */
-        .input-area {
-            background: rgba(15, 23, 42, 0.95);
-            border-top: 1px solid rgba(148, 163, 184, 0.1);
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
-        }
+/* ---------- 배경 오로라 + 그리드 ---------- */
+.aurora{position:fixed; inset:-25%; z-index:0; pointer-events:none; filter:blur(80px); opacity:.6}
+.aurora span{position:absolute; display:block; border-radius:50%}
+.aurora .b1{width:52vmax;height:52vmax;left:-10vmax;top:-14vmax;
+  background:radial-gradient(circle,rgba(37,99,235,.45),transparent 66%); animation:drift1 26s ease-in-out infinite}
+.aurora .b2{width:46vmax;height:46vmax;right:-12vmax;top:6vmax;
+  background:radial-gradient(circle,rgba(167,139,250,.34),transparent 66%); animation:drift2 32s ease-in-out infinite}
+.aurora .b3{width:56vmax;height:56vmax;left:18vmax;bottom:-24vmax;
+  background:radial-gradient(circle,rgba(34,211,238,.28),transparent 66%); animation:drift3 38s ease-in-out infinite}
+@keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vmax,4vmax) scale(1.12)}}
+@keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-5vmax,6vmax) scale(.92)}}
+@keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(4vmax,-6vmax) scale(1.1)}}
 
-        input {
-            background: #0f172a !important;
-            transition: all 0.2s;
-            /* iOS 자동 확대 방지를 위해 16px 이상 유지 */
-            font-size: 16px !important; 
-        }
-        @media (min-width: 640px) {
-            input { font-size: 1.25rem !important; } /* text-xl */
-        }
-        input:focus {
-            outline: none;
-            border-color: #60a5fa !important;
-            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3) !important;
-        }
+.gridfx{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.35;
+  background-image:linear-gradient(rgba(120,170,255,.055) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(120,170,255,.055) 1px,transparent 1px);
+  background-size:52px 52px;
+  mask-image:radial-gradient(ellipse at 50% 40%,#000 30%,transparent 78%);
+  -webkit-mask-image:radial-gradient(ellipse at 50% 40%,#000 30%,transparent 78%)}
 
-        /* CRT 모니터 효과 */
-        .crt-overlay {
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            background-size: 100% 3px, 3px 100%;
-            pointer-events: none;
-        }
+.vignette{position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%,transparent 45%,rgba(2,4,10,.75) 100%)}
 
-        /* 애니메이션 */
-        @keyframes flashRed {
-            0% { background-color: rgba(239, 68, 68, 0.3); }
-            100% { background-color: transparent; }
-        }
-        .damage-flash { animation: flashRed 0.3s ease-out; }
-        
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20% { transform: translateX(-6px); }
-            40% { transform: translateX(6px); }
-            60% { transform: translateX(-3px); }
-            80% { transform: translateX(3px); }
-        }
-        .shake-input { animation: shake 0.4s ease-in-out; border-color: #ef4444 !important; }
+/* 부유하는 화학 기호 */
+.molecules{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.molecule{position:absolute;color:rgba(90,169,255,.075);animation:floatUp 22s linear infinite}
+@keyframes floatUp{
+  0%{transform:translateY(112dvh) rotate(0deg);opacity:0}
+  12%{opacity:1} 88%{opacity:1}
+  100%{transform:translateY(-14dvh) rotate(360deg);opacity:0}}
 
-        @keyframes glitch {
-            0% { transform: translate(0); }
-            20% { transform: translate(-2px, 2px); }
-            40% { transform: translate(-2px, -2px); }
-            60% { transform: translate(2px, 2px); }
-            80% { transform: translate(2px, -2px); }
-            100% { transform: translate(0); }
-        }
-        .glitch-effect { animation: glitch 0.5s infinite; }
+/* 데미지 플래시 */
+#damageFlash{position:fixed;inset:0;z-index:45;pointer-events:none;opacity:0}
+@keyframes flashRed{0%{opacity:1}100%{opacity:0}}
+.flash-on{animation:flashRed .45s ease-out;
+  background:radial-gradient(ellipse at 50% 110%,rgba(255,60,90,.55),transparent 62%)}
 
-        /* 모달 스타일 */
-        .modal-bg {
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-        }
-        
-        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+/* ---------- 상단바 ---------- */
+.topbar{width:100%;max-width:920px;display:flex;justify-content:space-between;align-items:center;
+  gap:10px;z-index:5;flex-shrink:0}
+.brand{display:flex;flex-direction:column;gap:3px;min-width:0}
+.brand-row{display:flex;align-items:center;gap:8px}
+.logo{font-family:'Jua',sans-serif;font-size:clamp(20px,5.2vw,30px);line-height:1;
+  background:linear-gradient(100deg,#7dd3fc 0%,#3fe3ff 40%,#a78bfa 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 14px rgba(63,227,255,.35));white-space:nowrap}
+.chip-v{font-family:'Jua',sans-serif;font-size:11px;padding:2px 8px;border-radius:999px;
+  background:linear-gradient(135deg,rgba(63,227,255,.2),rgba(167,139,250,.2));
+  border:1px solid var(--stroke2);color:#cfe6ff}
+.brand-sub{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#diffBadge{display:inline-flex;align-items:center;gap:4px;font-family:'Jua',sans-serif;font-size:10px;
+  padding:2px 8px;border-radius:999px;border:1px solid var(--stroke2);background:rgba(63,227,255,.1);
+  color:#a9dcff;white-space:nowrap}
 
-        /* 사운드 버튼 공통 스타일 */
-        .sound-toggle-btn {
-            position: relative;
-            transition: all 0.2s;
-        }
-        .sound-toggle-btn:hover { transform: scale(1.1); }
-        .sound-toggle-btn:active { transform: scale(0.95); }
-        .sound-off::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            background: #ef4444;
-            top: 50%;
-            left: 0;
-            transform: rotate(-45deg);
-        }
-    </style>
+.hud{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.hud-row{display:flex;align-items:center;gap:6px}
+.pill{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+  background:var(--panel);border:1px solid var(--stroke);backdrop-filter:blur(10px);
+  box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.pill .lb{font-size:9px;color:var(--muted);letter-spacing:.08em}
+.pill .vl{font-family:'Jua',sans-serif;font-size:15px;line-height:1}
+.v-lv{color:var(--lime)} .v-tm{color:var(--cyan)}
+.score-wrap{display:flex;align-items:baseline;gap:7px}
+.score-lb{font-size:10px;color:var(--muted);letter-spacing:.14em}
+#scoreDisplay{font-family:'Jua',sans-serif;font-size:clamp(26px,7vw,42px);line-height:.9;color:var(--gold);
+  text-shadow:0 0 22px rgba(255,209,102,.45)}
+
+.icon-btn{width:32px;height:32px;flex-shrink:0;border-radius:50%;border:1px solid var(--stroke);
+  background:var(--panel);color:#cfe0ff;font-size:14px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:transform .15s,border-color .2s,background .2s;position:relative;backdrop-filter:blur(8px)}
+.icon-btn:hover{transform:scale(1.09);border-color:var(--stroke2);background:rgba(40,60,110,.7)}
+.icon-btn:active{transform:scale(.94)}
+.icon-btn.off{color:#ff8fa3;border-color:rgba(255,107,139,.5);background:rgba(90,20,40,.35)}
+.icon-btn.off::after{content:'';position:absolute;left:14%;width:72%;height:2px;border-radius:2px;
+  background:var(--rose);transform:rotate(-45deg);box-shadow:0 0 8px rgba(255,107,139,.8)}
+
+/* ---------- 게임 스테이지 ---------- */
+.stage{position:relative;width:100%;max-width:920px;flex:1;min-height:230px;display:flex;flex-direction:column;
+  border-radius:var(--r-xl);overflow:hidden;z-index:5;
+  background:linear-gradient(180deg,rgba(11,18,38,.92),rgba(5,9,22,.96));
+  border:1px solid var(--stroke);
+  box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.07),0 0 60px rgba(37,99,235,.12)}
+
+/* 산성도 게이지 */
+.gauge{position:absolute;top:0;left:0;width:100%;padding:9px 14px 12px;z-index:12;
+  background:linear-gradient(180deg,rgba(8,13,30,.96) 40%,rgba(8,13,30,0));
+  pointer-events:none}
+.gauge-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.gauge-title{display:flex;align-items:center;gap:6px;font-size:10px;color:#b9cbe8;letter-spacing:.05em}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--rose);box-shadow:0 0 10px var(--rose);
+  animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
+#acidText{font-family:'Jua',sans-serif;font-size:13px;color:var(--lime)}
+.gauge-track{height:14px;border-radius:999px;background:rgba(2,6,18,.9);overflow:hidden;
+  border:1px solid rgba(140,180,255,.22);box-shadow:inset 0 2px 8px rgba(0,0,0,.85);position:relative}
+#acidBar{height:100%;width:0%;border-radius:999px;
+  background:linear-gradient(90deg,#22d3a6,#9bf06b 45%,#ffc53d 78%,#ff6b8b);
+  transition:width .35s cubic-bezier(.4,0,.2,1);box-shadow:0 0 18px rgba(155,240,107,.45);position:relative}
+#acidBar::after{content:'';position:absolute;inset:0;border-radius:999px;
+  background:repeating-linear-gradient(115deg,rgba(255,255,255,.16) 0 8px,transparent 8px 18px);
+  animation:stripe 1.1s linear infinite}
+@keyframes stripe{0%{background-position:0 0}100%{background-position:36px 0}}
+
+/* 캔버스 */
+#canvasWrap{position:relative;flex:1;width:100%;min-height:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(37,99,235,.13),transparent 62%)}
+#gameCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* 콤보 배지 */
+#comboBadge{position:absolute;top:56px;right:14px;z-index:14;pointer-events:none;
+  font-family:'Jua',sans-serif;font-size:20px;color:var(--amber);
+  text-shadow:0 0 18px rgba(255,197,61,.75);opacity:0;transform:scale(.6);
+  transition:opacity .18s,transform .18s}
+#comboBadge.show{opacity:1;transform:scale(1)}
+
+/* 레벨업 배너 */
+#levelUpNotice{position:absolute;top:44%;left:50%;z-index:20;pointer-events:none;
+  transform:translate(-50%,-50%) scale(.5);opacity:0;transition:all .45s cubic-bezier(.2,1.4,.4,1);
+  font-family:'Jua',sans-serif;font-size:clamp(20px,5.5vw,32px);padding:10px 26px;border-radius:999px;
+  background:linear-gradient(100deg,rgba(37,99,235,.92),rgba(167,139,250,.92));
+  border:1px solid rgba(190,220,255,.5);white-space:nowrap;
+  box-shadow:0 0 44px rgba(99,102,241,.7),inset 0 1px 0 rgba(255,255,255,.35)}
+#levelUpNotice.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* 입력창 */
+.inputbar{display:flex;gap:8px;align-items:center;padding:10px;flex-shrink:0;z-index:12;
+  background:linear-gradient(0deg,rgba(8,13,30,.98),rgba(8,13,30,.75));
+  border-top:1px solid var(--stroke)}
+.caret{font-family:'Jua',sans-serif;color:var(--cyan);font-size:18px;padding-left:6px;animation:pulse 1.3s infinite}
+#answerInput{flex:1;min-width:0;font-family:'Jua',sans-serif;font-size:17px;color:#fff;
+  background:rgba(4,8,20,.95);border:1.5px solid rgba(130,175,255,.24);border-radius:var(--r-md);
+  padding:11px 16px;outline:none;transition:border-color .18s,box-shadow .18s,background .18s;letter-spacing:.04em}
+#answerInput::placeholder{color:#5c7099;font-family:'Gowun Dodum',sans-serif;font-size:14px}
+#answerInput:focus{border-color:var(--cyan);background:rgba(10,20,44,.95);
+  box-shadow:0 0 0 3px rgba(63,227,255,.16),0 0 24px rgba(63,227,255,.18)}
+#answerInput.ok{border-color:var(--lime)!important;box-shadow:0 0 0 3px rgba(155,240,107,.22)!important}
+#answerInput.bad{border-color:var(--rose)!important;animation:shake .38s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}
+  60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
+.btn{font-family:'Jua',sans-serif;border:none;cursor:pointer;border-radius:var(--r-md);
+  transition:transform .15s,box-shadow .2s,filter .2s;color:#fff}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:linear-gradient(100deg,#2563eb,#22d3ee);
+  box-shadow:0 8px 24px rgba(37,99,235,.42),inset 0 1px 0 rgba(255,255,255,.28)}
+.btn-primary:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.btn-ghost{background:var(--panel2);border:1px solid var(--stroke);color:#d5e4ff}
+.btn-ghost:hover{background:rgba(45,66,120,.7);border-color:var(--stroke2)}
+.btn-danger{background:linear-gradient(100deg,#e11d48,#fb7185);
+  box-shadow:0 8px 24px rgba(225,29,72,.4),inset 0 1px 0 rgba(255,255,255,.25)}
+.btn-danger:hover{filter:brightness(1.1);transform:translateY(-1px)}
+#submitBtn{padding:11px 22px;font-size:15px;flex-shrink:0}
+
+footer{font-size:10px;color:#4b5c7d;z-index:5;flex-shrink:0;text-align:center}
+
+/* ---------- 모달 공통 ---------- */
+.modal{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:14px;
+  background:rgba(3,6,16,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.modal.hidden{display:none}
+.card{width:100%;max-width:480px;max-height:94dvh;overflow-y:auto;position:relative;
+  background:linear-gradient(165deg,rgba(17,26,52,.97),rgba(8,13,30,.99));
+  border:1px solid var(--stroke2);border-radius:var(--r-xl);padding:22px;
+  box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.09),0 0 80px rgba(37,99,235,.18);
+  scrollbar-width:thin;scrollbar-color:rgba(130,175,255,.3) transparent}
+.card::-webkit-scrollbar{width:6px}
+.card::-webkit-scrollbar-thumb{background:rgba(130,175,255,.3);border-radius:99px}
+.card-wide{max-width:660px}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+.modal-title{font-family:'Jua',sans-serif;font-size:20px;display:flex;align-items:center;gap:8px}
+.close-x{width:30px;height:30px;border-radius:50%;border:1px solid var(--stroke);background:var(--panel2);
+  color:#cfe0ff;font-size:17px;cursor:pointer;line-height:1;flex-shrink:0;transition:.2s}
+.close-x:hover{background:#e11d48;border-color:#fb7185;color:#fff;transform:rotate(90deg)}
+
+/* ---------- 시작 화면 ---------- */
+.hero{text-align:center;margin-bottom:16px}
+.hero-emoji{font-size:44px;line-height:1;display:inline-block;animation:bob 2.4s ease-in-out infinite;
+  filter:drop-shadow(0 6px 18px rgba(63,227,255,.4))}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-9px) rotate(4deg)}}
+.hero-title{font-family:'Jua',sans-serif;font-size:clamp(26px,7.6vw,36px);margin-top:6px;
+  background:linear-gradient(100deg,#7dd3fc,#3fe3ff 42%,#a78bfa);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-sub{font-size:12.5px;color:var(--muted);margin-top:5px}
+
+.sec-label{font-family:'Jua',sans-serif;font-size:12.5px;color:#a9c2e8;margin:0 0 9px;
+  display:flex;align-items:center;gap:7px}
+.sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--stroke2),transparent)}
+
+.diff-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.diff-card{display:flex;align-items:center;gap:12px;padding:11px 13px;cursor:pointer;text-align:left;
+  border-radius:var(--r-md);border:1.5px solid var(--stroke);background:rgba(16,25,50,.6);
+  transition:all .18s;position:relative;overflow:hidden;width:100%}
+.diff-card:hover{border-color:var(--stroke2);background:rgba(28,42,82,.7);transform:translateX(3px)}
+.diff-card.active{border-color:var(--acc);background:linear-gradient(100deg,var(--accBg),rgba(16,25,50,.6));
+  box-shadow:0 0 0 3px var(--accBg),0 8px 26px rgba(0,0,0,.4)}
+.diff-card.active::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--acc)}
+.diff-ic{width:38px;height:38px;flex-shrink:0;border-radius:11px;display:flex;align-items:center;justify-content:center;
+  font-family:'Jua',sans-serif;font-size:15px;color:#04070f;background:var(--acc);
+  box-shadow:0 4px 14px var(--accBg)}
+.diff-body{flex:1;min-width:0}
+.diff-name{font-family:'Jua',sans-serif;font-size:15px;color:#eaf3ff}
+.diff-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.diff-cnt{font-family:'Jua',sans-serif;font-size:11px;color:var(--acc);flex-shrink:0;
+  padding:3px 9px;border-radius:999px;background:var(--accBg);border:1px solid var(--acc)}
+.d-easy{--acc:#9bf06b;--accBg:rgba(155,240,107,.16)}
+.d-normal{--acc:#3fe3ff;--accBg:rgba(63,227,255,.16)}
+.d-hard{--acc:#ff6b8b;--accBg:rgba(255,107,139,.16)}
+
+.howto{background:rgba(10,17,36,.72);border:1px solid var(--stroke);border-radius:var(--r-md);
+  padding:13px 15px;margin-bottom:16px}
+.howto li{list-style:none;display:flex;gap:9px;font-size:12.5px;color:#c6d6ef;line-height:1.65;margin-bottom:5px}
+.howto li:last-child{margin-bottom:0}
+.howto .n{font-family:'Jua',sans-serif;color:var(--cyan);flex-shrink:0}
+.kbd{font-family:'Jua',sans-serif;font-size:10.5px;padding:1px 7px;border-radius:6px;
+  background:rgba(63,227,255,.14);border:1px solid var(--stroke2);color:#bfe8ff}
+.hl-b{color:#7dd3fc} .hl-g{color:var(--lime)} .hl-r{color:var(--rose)} .hl-y{color:var(--gold)}
+
+.start-actions{display:flex;gap:8px}
+.start-actions .btn{padding:13px 10px;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.start-actions .side{flex:1}
+.start-actions .main{flex:2.1;font-size:18px;flex-direction:row;gap:8px}
+/* ---------- 볼륨 컨트롤 (배경음 / 효과음) ---------- */
+.vol-panel{display:flex;flex-direction:column;gap:9px;margin-bottom:16px;padding:11px 13px;
+  border-radius:var(--r-md);background:rgba(16,25,50,.62);border:1px solid var(--stroke)}
+.vol-row{display:flex;align-items:center;gap:8px}
+.vol-ic{width:29px;height:29px;flex-shrink:0;border-radius:9px;border:1px solid var(--stroke);
+  background:var(--panel2);color:#d5e4ff;font-size:14px;cursor:pointer;position:relative;
+  display:flex;align-items:center;justify-content:center;transition:.18s;padding:0}
+.vol-ic:hover{border-color:var(--stroke2);background:rgba(45,66,120,.75);transform:scale(1.06)}
+.vol-ic:active{transform:scale(.93)}
+.vol-name{font-family:'Jua',sans-serif;font-size:12.5px;color:#cfe0ff;width:48px;flex-shrink:0}
+.vol-pct{font-family:'Jua',sans-serif;font-size:11.5px;color:#8ba0c6;width:36px;text-align:right;flex-shrink:0;margin-left:auto}
+
+.vol-btn{width:23px;height:23px;flex-shrink:0;padding:0;border-radius:7px;cursor:pointer;
+  border:1px solid var(--stroke);background:var(--panel);color:#cfe0ff;
+  font-family:'Jua',sans-serif;font-size:13px;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:.15s}
+.vol-btn:hover:not(:disabled){background:rgba(45,66,120,.85);border-color:var(--stroke2);color:#fff}
+.vol-btn:active:not(:disabled){transform:scale(.88)}
+.vol-btn:disabled{opacity:.28;cursor:default}
+
+.vol-bar{display:flex;gap:3px;align-items:center;flex-shrink:0}
+.vol-bar i{width:16px;height:14px;border-radius:3px;display:block;
+  background:rgba(130,175,255,.16);transition:background .18s,box-shadow .18s}
+.vol-bar i.on{background:var(--cyan);box-shadow:0 0 9px rgba(63,227,255,.55)}
+.vol-row.muted .vol-name,.vol-row.muted .vol-pct{color:#ff8fa3}
+.vol-row.muted .vol-ic{color:#ff8fa3;border-color:rgba(255,107,139,.5);background:rgba(90,20,40,.35)}
+
+/* 게임 화면 상단의 소형 볼륨 버튼 */
+.hud-sound{display:flex;align-items:center;gap:3px}
+.hud-sound .vol-btn{width:20px;height:20px;font-size:12px}
+@media (max-width:760px){ .hud-sound .vol-btn{display:none} }
+
+/* ---------- 원소 공부 (주기율표 타일) ---------- */
+.tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.tab{font-family:'Jua',sans-serif;font-size:11.5px;padding:6px 13px;border-radius:999px;cursor:pointer;
+  background:rgba(16,25,50,.7);border:1px solid var(--stroke);color:#a9c2e8;transition:.18s}
+.tab:hover{border-color:var(--stroke2);color:#e0ecff}
+.tab.active{background:linear-gradient(100deg,#2563eb,#22d3ee);color:#fff;border-color:transparent;
+  box-shadow:0 4px 16px rgba(37,99,235,.45)}
+
+.el-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:7px}
+.el-tile{border-radius:var(--r-sm);padding:8px 7px 7px;text-align:center;position:relative;overflow:hidden;
+  background:linear-gradient(160deg,rgba(30,45,88,.85),rgba(12,19,40,.9));
+  border:1px solid var(--stroke);transition:transform .16s,border-color .18s,box-shadow .2s}
+.el-tile:hover{transform:translateY(-3px) scale(1.03);border-color:var(--tc);box-shadow:0 8px 22px rgba(0,0,0,.5)}
+.el-tile::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,var(--tg),transparent 70%);
+  opacity:.55;pointer-events:none}
+.el-no{font-family:'Jua',sans-serif;font-size:9.5px;color:var(--muted);position:relative}
+.el-sym{font-family:'Jua',sans-serif;font-size:23px;line-height:1.15;color:var(--tc);position:relative;
+  text-shadow:0 0 16px var(--tg)}
+.el-nm{font-size:10.5px;color:#c6d6ef;margin-top:2px;position:relative;word-break:keep-all;line-height:1.3}
+
+/* ---------- 랭킹 ---------- */
+.rank-list{display:flex;flex-direction:column;gap:6px;min-height:150px}
+.rank-row{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:var(--r-md);
+  background:rgba(16,25,50,.6);border:1px solid var(--stroke);transition:.18s}
+.rank-row:hover{border-color:var(--stroke2);background:rgba(28,42,82,.65)}
+.rank-row.me{border-color:var(--gold);background:linear-gradient(100deg,rgba(255,209,102,.14),rgba(16,25,50,.6));
+  box-shadow:0 0 0 2px rgba(255,209,102,.16)}
+.rank-no{width:28px;height:28px;flex-shrink:0;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  font-family:'Jua',sans-serif;font-size:13px;background:rgba(60,84,140,.5);color:#cfe0ff}
+.rank-row:nth-child(1) .rank-no{background:linear-gradient(140deg,#ffd166,#f59e0b);color:#3a2500}
+.rank-row:nth-child(2) .rank-no{background:linear-gradient(140deg,#e2e8f0,#94a3b8);color:#1e293b}
+.rank-row:nth-child(3) .rank-no{background:linear-gradient(140deg,#f0a878,#c2703c);color:#331a06}
+.rank-info{flex:1;min-width:0}
+.rank-name{font-family:'Jua',sans-serif;font-size:14px;color:#eaf3ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-meta{font-size:10px;color:var(--muted);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rank-score{font-family:'Jua',sans-serif;font-size:17px;color:var(--gold);flex-shrink:0}
+.rank-empty{text-align:center;color:var(--muted);font-size:12.5px;padding:36px 10px;line-height:1.8}
+
+/* ---------- 랭킹 : 📱 기기 / 🌐 전체 전환 ---------- */
+.scope-switch{display:flex;gap:4px;padding:4px;margin-bottom:11px;border-radius:999px;
+  background:rgba(6,11,26,.85);border:1px solid var(--stroke)}
+.scope-btn{flex:1;font-family:'Jua',sans-serif;font-size:12.5px;padding:9px 6px;border-radius:999px;
+  cursor:pointer;background:transparent;border:none;color:#8ba0c6;transition:.18s;white-space:nowrap}
+.scope-btn:hover{color:#dbe8ff}
+.scope-btn.active{background:linear-gradient(100deg,#2563eb,#22d3ee);color:#fff;
+  box-shadow:0 4px 14px rgba(37,99,235,.42)}
+.scope-btn .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:5px;
+  background:var(--lime);box-shadow:0 0 8px var(--lime);vertical-align:middle}
+
+.rank-state{text-align:center;color:var(--muted);font-size:12.5px;padding:30px 12px;line-height:1.9}
+.rank-state b{color:#cfe0ff}
+.spin{display:inline-block;width:22px;height:22px;border-radius:50%;
+  border:2.5px solid rgba(130,175,255,.2);border-top-color:var(--cyan);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.setup-box{border-radius:var(--r-md);border:1px dashed var(--stroke2);background:rgba(10,17,36,.72);
+  padding:15px 14px;text-align:left;font-size:11.5px;color:#a9c2e8;line-height:1.95}
+.setup-box b{color:var(--cyan)}
+.setup-box ol{margin:9px 0 11px;padding-left:19px}
+.setup-box li{margin-bottom:3px}
+.setup-box code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;
+  background:rgba(63,227,255,.11);border-radius:5px;padding:1px 5px;color:#bdf3ff;
+  word-break:keep-all;overflow-wrap:anywhere}
+.setup-row{display:flex;gap:6px;margin-top:4px}
+.setup-row input{flex:1;min-width:0;font-size:11.5px;color:#eaf3ff;background:rgba(4,8,20,.95);
+  border:1.5px solid var(--stroke);border-radius:var(--r-sm);padding:9px 10px;outline:none}
+.setup-row input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(63,227,255,.14)}
+.setup-row button{padding:9px 15px;font-size:12px;border-radius:var(--r-sm);flex-shrink:0}
+
+.save-status{margin-top:9px;font-size:11.5px;text-align:center;line-height:1.8;color:#7f92b5;min-height:16px}
+.save-status.ok{color:var(--lime)}
+.save-status.warn{color:var(--amber)}
+.save-status b{color:var(--gold)}
+.link-btn{background:none;border:none;padding:0 0 0 5px;cursor:pointer;font-family:inherit;font-size:inherit;
+  color:var(--cyan);text-decoration:underline;text-underline-offset:3px}
+.link-btn:hover{color:#bdf3ff}
+.mini-spin{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;margin-right:5px;
+  border:2px solid rgba(130,175,255,.25);border-top-color:var(--cyan);animation:spin .8s linear infinite}
+
+/* ---------- 게임 오버 ---------- */
+.result-card{position:relative;overflow:hidden;border-radius:var(--r-xl);padding:22px 20px;
+  background:linear-gradient(165deg,rgba(20,28,56,.98),rgba(7,11,26,.99));
+  border:1px solid var(--stroke2);box-shadow:inset 0 1px 0 rgba(255,255,255,.09)}
+.result-card::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% -10%,rgba(225,29,72,.28),transparent 60%)}
+.go-title{font-family:'Jua',sans-serif;font-size:clamp(30px,9vw,42px);text-align:center;color:#ff6b8b;
+  text-shadow:0 0 30px rgba(255,107,139,.6);position:relative;line-height:1.1}
+.go-sub{text-align:center;font-size:10.5px;letter-spacing:.28em;color:#7c8bab;margin:4px 0 16px;position:relative}
+.newrec{display:none;margin:0 auto 14px;width:fit-content;font-family:'Jua',sans-serif;font-size:12.5px;
+  padding:5px 15px;border-radius:999px;color:#3a2500;position:relative;
+  background:linear-gradient(100deg,#ffd166,#fbbf24);box-shadow:0 0 26px rgba(255,209,102,.55);
+  animation:bob 1.6s ease-in-out infinite}
+.newrec.show{display:block}
+.stat-main{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;border-radius:var(--r-md);
+  background:rgba(10,17,36,.8);border:1px solid var(--stroke);margin-bottom:8px;position:relative}
+.stat-main .lb{font-size:10px;color:var(--muted);letter-spacing:.14em}
+.stat-main .vl{font-family:'Jua',sans-serif;font-size:32px;color:var(--gold);line-height:1;
+  text-shadow:0 0 22px rgba(255,209,102,.4)}
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;position:relative}
+.stat-box{padding:11px;border-radius:var(--r-md);background:rgba(10,17,36,.8);border:1px solid var(--stroke);text-align:center}
+.stat-box .lb{font-size:9.5px;color:var(--muted);letter-spacing:.1em;margin-bottom:4px}
+.stat-box .vl{font-family:'Jua',sans-serif;font-size:19px;line-height:1}
+.result-foot{margin-top:14px;padding-top:11px;border-top:1px solid rgba(130,175,255,.14);
+  text-align:center;font-size:9.5px;color:#57668a;position:relative}
+
+.save-row{display:flex;gap:7px;margin-top:12px}
+#nameInput{flex:1;min-width:0;font-family:'Jua',sans-serif;font-size:14px;color:#fff;
+  background:rgba(4,8,20,.95);border:1.5px solid var(--stroke);border-radius:var(--r-md);padding:10px 14px;outline:none}
+#nameInput:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,209,102,.16)}
+#nameInput.bad{border-color:var(--rose)!important;box-shadow:0 0 0 3px rgba(255,107,139,.22)!important;
+  animation:shake .38s ease}
+#nameInput::placeholder{font-family:'Gowun Dodum',sans-serif;font-size:12.5px;color:#5c7099}
+#saveScoreBtn{padding:10px 18px;font-size:13.5px;flex-shrink:0}
+.go-actions{display:flex;gap:7px;margin-top:12px}
+.go-actions .btn{padding:13px 12px;font-size:15px}
+.go-actions .wide{flex:1}
+
+/* ---------- 소셜 링크 ---------- */
+.social{display:flex;gap:6px;align-items:center}
+.social a{width:27px;height:27px;flex-shrink:0;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--stroke);background:var(--panel);color:#c3d7f5;text-decoration:none;
+  transition:transform .18s,background .2s,border-color .2s,color .2s,box-shadow .2s;backdrop-filter:blur(8px)}
+.social a svg{width:15px;height:15px;display:block}
+.social a:active{transform:scale(.92)}
+.social a.yt:hover{background:#ff0033;border-color:#ff4d6d;color:#fff;transform:translateY(-2px);
+  box-shadow:0 6px 18px rgba(255,0,51,.45)}
+.social a.ig:hover{background:linear-gradient(45deg,#f9ce34,#ee2a7b 55%,#6228d7);border-color:transparent;color:#fff;
+  transform:translateY(-2px);box-shadow:0 6px 18px rgba(238,42,123,.45)}
+
+/* 시작화면 크리에이터 카드 */
+.creator{display:flex;align-items:center;gap:11px;margin-top:16px;padding:11px 13px;border-radius:var(--r-md);
+  background:linear-gradient(100deg,rgba(24,36,70,.7),rgba(14,22,46,.6));border:1px solid var(--stroke)}
+.creator-txt{flex:1;min-width:0}
+.creator-name{font-family:'Jua',sans-serif;font-size:13.5px;color:#e6f0ff}
+.creator-sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+.creator .social a{width:32px;height:32px;border-radius:10px}
+.creator .social a svg{width:17px;height:17px}
+
+footer .fbar{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:wrap}
+footer a{color:#6c7fa3;text-decoration:none;transition:color .2s}
+footer a:hover{color:#9bb6e0;text-decoration:underline}
+
+/* ---------- 위험 경고 (오염도 85% 이상) ---------- */
+#dangerBadge{position:absolute;top:56px;left:50%;z-index:15;pointer-events:none;
+  transform:translateX(-50%) scale(.8);opacity:0;transition:opacity .25s,transform .25s;
+  font-family:'Jua',sans-serif;font-size:12.5px;padding:5px 15px;border-radius:999px;
+  background:rgba(120,10,32,.88);border:1px solid rgba(255,107,139,.7);color:#ffd9e1;
+  box-shadow:0 0 24px rgba(255,60,100,.55)}
+#dangerBadge.show{opacity:1;transform:translateX(-50%) scale(1);animation:dangerPulse 1s ease-in-out infinite}
+@keyframes dangerPulse{0%,100%{box-shadow:0 0 20px rgba(255,60,100,.4)}
+  50%{box-shadow:0 0 42px rgba(255,60,100,.95)}}
+.stage.danger{animation:stageDanger 1.1s ease-in-out infinite}
+@keyframes stageDanger{0%,100%{border-color:rgba(255,107,139,.32)}50%{border-color:rgba(255,107,139,.95)}}
+
+/* ---------- 콤보 마일스톤 배너 ---------- */
+#comboNotice{position:absolute;top:31%;left:50%;z-index:19;pointer-events:none;
+  transform:translate(-50%,-50%) scale(.4);opacity:0;
+  transition:opacity .3s,transform .45s cubic-bezier(.2,1.5,.4,1);
+  font-family:'Jua',sans-serif;font-size:clamp(19px,5vw,29px);white-space:nowrap;
+  text-shadow:0 0 26px currentColor}
+#comboNotice.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+/* ---------- 냉각(감속) 표시 ---------- */
+#slowBadge{position:absolute;top:56px;left:14px;z-index:14;pointer-events:none;opacity:0;
+  transition:opacity .2s;font-family:'Jua',sans-serif;font-size:12px;padding:4px 12px;border-radius:999px;
+  background:rgba(8,38,70,.88);border:1px solid rgba(63,227,255,.55);color:#bdf3ff;
+  box-shadow:0 0 20px rgba(63,227,255,.45)}
+#slowBadge.show{opacity:1}
+
+/* ---------- HUD : 최고 기록 ---------- */
+.best-line{font-family:'Jua',sans-serif;font-size:11px;color:#8a7a4a;letter-spacing:.06em;margin-top:-2px}
+.best-line b{color:var(--gold);font-weight:normal}
+
+/* ---------- 시작 화면 : 특수 원소 안내 ---------- */
+.power-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:16px}
+.power-card{border-radius:var(--r-md);border:1px solid var(--stroke);background:rgba(10,17,36,.72);
+  padding:10px 7px;text-align:center;border-top:2px solid var(--pc)}
+.power-ic{font-size:20px;line-height:1.15}
+.power-nm{font-family:'Jua',sans-serif;font-size:11.5px;color:var(--pc);margin-top:4px}
+.power-ds{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.5;word-break:keep-all}
+
+/* ---------- 난이도 카드 : 최고 기록 ---------- */
+.diff-side{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+.diff-best{font-family:'Jua',sans-serif;font-size:10px;color:var(--gold);white-space:nowrap}
+.diff-best.none{color:#4b5c7d}
+
+/* ---------- 게임 오버 : 업적 · 놓친 원소 ---------- */
+.go-wrap{width:100%;max-width:440px;max-height:calc(100dvh - 28px);overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:rgba(130,175,255,.3) transparent}
+.go-wrap::-webkit-scrollbar{width:6px}
+.go-wrap::-webkit-scrollbar-thumb{background:rgba(130,175,255,.3);border-radius:99px}
+.ach-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:13px;position:relative}
+.ach-row:empty{display:none}
+.ach{font-family:'Jua',sans-serif;font-size:11px;padding:5px 11px;border-radius:999px;white-space:nowrap;
+  background:linear-gradient(100deg,rgba(255,209,102,.2),rgba(255,197,61,.09));
+  border:1px solid rgba(255,209,102,.5);color:#ffe1a3}
+.miss-box{margin-top:12px;padding:11px 12px;border-radius:var(--r-md);position:relative;
+  background:rgba(10,17,36,.82);border:1px solid var(--stroke)}
+.miss-title{font-size:10.5px;color:var(--muted);letter-spacing:.05em;margin-bottom:8px;text-align:center}
+.miss-grid{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.miss-chip{font-size:11px;padding:4px 9px;border-radius:8px;white-space:nowrap;
+  background:rgba(255,107,139,.12);border:1px solid rgba(255,107,139,.32);color:#ffc9d4}
+.miss-chip b{font-family:'Jua',sans-serif;color:#ff8fa3;margin-right:4px;font-weight:normal}
+
+/* ---------- 일시정지 ---------- */
+.pause-stat{display:flex;justify-content:space-around;gap:8px;margin:4px 0 16px;
+  padding:13px 10px;border-radius:var(--r-md);background:rgba(10,17,36,.8);border:1px solid var(--stroke)}
+.pause-stat div{text-align:center}
+.pause-stat .lb{font-size:9.5px;color:var(--muted);letter-spacing:.1em;display:block;margin-bottom:4px}
+.pause-stat .vl{font-family:'Jua',sans-serif;font-size:19px;line-height:1}
+
+/* ---------- 반응형 ---------- */
+@media (max-width:600px){
+  body{padding:6px 8px calc(4px + env(safe-area-inset-bottom));gap:6px}
+  .brand-sub{display:none}
+  .stage{border-radius:20px}
+  .card{padding:18px 15px;border-radius:20px}
+  .el-grid{grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px}
+  .el-sym{font-size:20px}
+  #comboBadge{top:50px;right:10px;font-size:17px}
+  #dangerBadge,#slowBadge{top:50px;font-size:11px;padding:4px 10px}
+  #slowBadge{left:10px}
+  .power-ds{font-size:9.5px}
+}
+@media (min-width:820px){
+  .gauge{padding:12px 18px 16px}
+  .gauge-track{height:17px}
+  #answerInput{font-size:19px;padding:13px 18px}
+  #submitBtn{padding:13px 30px;font-size:17px}
+  .inputbar{padding:12px 14px}
+}
+@media (max-height:520px){
+  .brand-sub,footer{display:none}
+  .stage{min-height:170px}
+}
+</style>
 </head>
-<body class="w-full flex flex-col items-center justify-center relative overflow-hidden p-2 sm:p-4">
+<body>
 
-    <!-- 배경 애니메이션 요소 -->
-    <div class="background-molecules" id="bgMolecules"></div>
-    
-    <!-- CRT 오버레이 & 데미지 효과 -->
-    <div id="damageOverlay" class="absolute inset-0 pointer-events-none z-40"></div>
-    <div class="crt-overlay absolute inset-0 z-30 pointer-events-none"></div>
+<!-- 배경 레이어 -->
+<div class="aurora"><span class="b1"></span><span class="b2"></span><span class="b3"></span></div>
+<div class="gridfx"></div>
+<div class="molecules" id="bgMolecules"></div>
+<div class="vignette"></div>
+<div id="damageFlash"></div>
 
-    <!-- 레벨업 알림 -->
-    <div id="levelUpNotice" class="absolute top-16 sm:top-24 z-50 bg-blue-600/90 text-white px-6 sm:px-8 py-2 sm:py-3 rounded-full font-black text-lg sm:text-xl shadow-[0_0_20px_rgba(37,99,235,0.6)] border border-blue-400 opacity-0 pointer-events-none transition-all duration-500 transform scale-50">
-        🚀 LEVEL UP!
+<!-- 상단바 -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-row">
+      <span class="logo">ACID RAIN</span>
+      <span class="chip-v">V3</span>
+    </div>
+    <div class="brand-row">
+      <span class="brand-sub">떨어지는 원소를 기호로 정화하세요</span>
+      <span id="diffBadge">🧪 표준</span>
+      <span class="social">
+        <a class="yt" href="https://www.youtube.com/@songsamscience" target="_blank" rel="noopener noreferrer"
+           title="송쌤과학 유튜브" aria-label="송쌤과학 유튜브">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="1.2" y="4.6" width="21.6" height="14.8" rx="5" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <path d="M10 8.9l6.1 3.1-6.1 3.1z" fill="currentColor"/>
+          </svg>
+        </a>
+        <a class="ig" href="https://www.instagram.com/songsamscience/" target="_blank" rel="noopener noreferrer"
+           title="송쌤과학 인스타그램" aria-label="송쌤과학 인스타그램">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2.4" y="2.4" width="19.2" height="19.2" rx="5.6" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <circle cx="17.6" cy="6.4" r="1.35" fill="currentColor"/>
+          </svg>
+        </a>
+      </span>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="hud-row">
+      <span class="hud-sound">
+        <button class="vol-btn" data-vol="bgm-" title="배경음 줄이기">－</button>
+        <button class="icon-btn" id="bgmToggleGame" title="배경음 켜기/끄기">🎵</button>
+        <button class="vol-btn" data-vol="bgm+" title="배경음 키우기">＋</button>
+      </span>
+      <span class="hud-sound">
+        <button class="vol-btn" data-vol="sfx-" title="효과음 줄이기">－</button>
+        <button class="icon-btn" id="sfxToggleGame" title="효과음 켜기/끄기">🔊</button>
+        <button class="vol-btn" data-vol="sfx+" title="효과음 키우기">＋</button>
+      </span>
+      <div class="pill"><span class="lb">LV</span><span class="vl v-lv" id="levelDisplay">1</span></div>
+      <div class="pill"><span class="vl v-tm" id="timerDisplay">00:00</span></div>
+      <button class="icon-btn" id="pauseBtn" title="일시정지 (ESC)">⏸</button>
+    </div>
+    <div class="score-wrap">
+      <span class="score-lb">SCORE</span>
+      <span id="scoreDisplay">0</span>
+    </div>
+    <div class="best-line" id="bestLine" hidden>BEST <b id="bestDisplay">0</b></div>
+  </div>
+</div>
+
+<!-- 게임 스테이지 -->
+<div class="stage">
+  <div class="gauge">
+    <div class="gauge-head">
+      <span class="gauge-title"><span class="dot"></span>ACIDITY · 오염도</span>
+      <span id="acidText">0%</span>
+    </div>
+    <div class="gauge-track"><div id="acidBar"></div></div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="gameCanvas"></canvas>
+    <div id="comboBadge">COMBO ×2</div>
+    <div id="levelUpNotice">🚀 LEVEL 2</div>
+    <div id="comboNotice">🔥 5 COMBO!</div>
+    <div id="dangerBadge">⚠️ 위험! 오염도 90%</div>
+    <div id="slowBadge">❄️ 냉각 중 5.0초</div>
+  </div>
+
+  <form class="inputbar" id="inputForm" onsubmit="event.preventDefault();">
+    <span class="caret">&gt;</span>
+    <input type="text" id="answerInput" placeholder="원소 기호 입력 (예: Na)"
+           autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="none" maxlength="4">
+    <button type="submit" class="btn btn-primary" id="submitBtn">정화</button>
+  </form>
+</div>
+
+<footer>
+  <div class="fbar">
+    <span>Copyright ⓒ <b style="color:#8ba0c6">송쌤과학</b>. All rights reserved.</span>
+    <a href="https://www.youtube.com/@songsamscience" target="_blank" rel="noopener noreferrer">YouTube</a>
+    <span style="color:#3a465e">·</span>
+    <a href="https://www.instagram.com/songsamscience/" target="_blank" rel="noopener noreferrer">Instagram</a>
+  </div>
+</footer>
+
+<!-- ================= 시작 화면 ================= -->
+<div class="modal" id="startModal">
+  <div class="card">
+    <div class="hero">
+      <div class="hero-emoji">🧪</div>
+      <h1 class="hero-title">원소 산성비</h1>
+      <p class="hero-sub">지구가 오염되기 전에 원소를 정화하세요!</p>
     </div>
 
-    <!-- 상단 UI -->
-    <div class="w-full max-w-3xl flex flex-row justify-between items-end px-2 sm:px-6 mb-2 sm:mb-4 z-20 flex-shrink-0">
-        <div class="flex flex-col">
-            <div class="flex items-center gap-2 sm:gap-3">
-                <h1 class="text-2xl sm:text-3xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 tracking-tighter filter drop-shadow-[0_0_5px_rgba(56,189,248,0.5)]">
-                    ACID RAIN
-                </h1>
-                <span class="px-1.5 py-0.5 rounded bg-gray-800 border border-gray-600 text-[9px] sm:text-[10px] text-gray-400 whitespace-nowrap">Ver. Chemistry</span>
-            </div>
-            <div class="hidden sm:flex items-center gap-4 mt-1">
-                <p class="text-xs text-gray-400">원소 기호를 입력하여 산성비를 막으세요!</p>
-                <div class="flex items-center gap-2 bg-gray-900/80 px-3 py-1 rounded-full border border-gray-700">
-                    <span class="text-xs font-bold text-gray-400">LEVEL</span>
-                    <span id="levelDisplayDesktop" class="text-lg font-orbitron font-bold text-green-400">1</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="flex flex-col items-end gap-1 sm:gap-2">
-            <!-- 사운드 토글 & 타이머 -->
-            <div class="flex items-center gap-2 sm:gap-3">
-                <!-- 게임 화면 사운드 버튼 -->
-                <button id="gameSoundToggle" class="sound-toggle-btn w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center text-gray-300 hover:text-white hover:border-blue-400 hover:bg-gray-700 text-sm">
-                    🔊
-                </button>
-                <div id="timerDisplay" class="text-lg sm:text-xl font-orbitron text-cyan-400 bg-gray-900/90 px-2 sm:px-3 py-0.5 sm:py-1 rounded border border-cyan-900 shadow-[0_0_10px_rgba(34,211,238,0.2)]">
-                    00:00
-                </div>
-            </div>
-            
-            <div class="flex items-baseline gap-1.5 sm:gap-2">
-                <!-- 모바일용 레벨 표시 (점수 옆에 작게 배치) -->
-                <span class="sm:hidden text-[10px] font-bold text-green-400 bg-gray-800/80 px-1.5 py-0.5 rounded border border-gray-700">LV.<span id="levelDisplayMobile">1</span></span>
-                <span class="text-[10px] sm:text-xs font-bold text-gray-500">SCORE</span>
-                <span id="scoreDisplay" class="text-2xl sm:text-4xl font-orbitron font-bold text-yellow-400 leading-none drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]">0</span>
-            </div>
-        </div>
+    <div class="vol-panel">
+      <div class="vol-row" id="bgmRow">
+        <button class="vol-ic" id="bgmToggleStart" title="배경음 켜기/끄기">🎵</button>
+        <span class="vol-name">배경음</span>
+        <button class="vol-btn" data-vol="bgm-" title="배경음 줄이기">－</button>
+        <span class="vol-bar" id="bgmBar"><i></i><i></i><i></i><i></i><i></i></span>
+        <button class="vol-btn" data-vol="bgm+" title="배경음 키우기">＋</button>
+        <span class="vol-pct" id="bgmPct">60%</span>
+      </div>
+      <div class="vol-row" id="sfxRow">
+        <button class="vol-ic" id="sfxToggleStart" title="효과음 켜기/끄기">🔊</button>
+        <span class="vol-name">효과음</span>
+        <button class="vol-btn" data-vol="sfx-" title="효과음 줄이기">－</button>
+        <span class="vol-bar" id="sfxBar"><i></i><i></i><i></i><i></i><i></i></span>
+        <button class="vol-btn" data-vol="sfx+" title="효과음 키우기">＋</button>
+        <span class="vol-pct" id="sfxPct">80%</span>
+      </div>
     </div>
 
-    <!-- 메인 게임 컨테이너 (Flex-1로 남은 공간 모두 차지) -->
-    <div class="relative flex-1 flex flex-col w-full max-w-3xl min-h-[250px] bg-gray-900 rounded-xl overflow-hidden shadow-2xl z-20 border border-gray-700/50">
-        
-        <!-- 산성도 게이지 영역 (z-index 30) -->
-        <div class="acid-gauge-wrapper absolute top-0 left-0 w-full p-2 sm:p-3 z-30">
-            <div class="flex justify-between items-center text-[10px] sm:text-xs text-gray-300 mb-1 sm:mb-1.5 px-1">
-                <span class="font-bold flex items-center gap-1">
-                    <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-red-500 animate-pulse"></span>
-                    ACIDITY (오염도)
-                </span>
-                <span id="acidText" class="font-orbitron font-bold text-green-400 text-xs sm:text-sm">0%</span>
-            </div>
-            <div class="acid-bar-container">
-                <div id="acidBar" class="acid-bar"></div>
-            </div>
-        </div>
-
-        <!-- 캔버스 래퍼 (유동적 높이) -->
-        <div id="canvasContainer" class="flex-1 relative w-full h-full bg-[rgba(15,23,42,0.5)] backdrop-blur-[3px] border-b-[3px] sm:border-b-4 border-[#334155]">
-            <!-- 부모 크기에 맞춰 꽉 차는 캔버스 -->
-            <canvas id="gameCanvas" class="absolute inset-0 w-full h-full block"></canvas>
-        </div>
-
-        <!-- 하단 입력창 (Form 태그 사용하여 모바일 키보드 호환성 향상) -->
-        <form id="inputForm" class="input-area p-2 sm:p-4 flex gap-2 sm:gap-3 items-center relative z-30 flex-shrink-0" onsubmit="event.preventDefault();">
-            <span class="text-blue-400 font-bold text-lg sm:text-xl animate-pulse hidden sm:inline">&gt;</span>
-            <input type="text" id="answerInput" 
-                class="flex-1 bg-gray-900 text-white font-mono px-3 py-2.5 sm:px-5 sm:py-3 rounded-lg border border-gray-700 placeholder-gray-500 focus:bg-gray-800" 
-                placeholder="원소 기호 입력" 
-                autocomplete="off" spellcheck="false" autocorrect="off" autocapitalize="none">
-            <button type="submit" id="submitBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 sm:px-8 sm:py-3 rounded-lg font-bold transition shadow-lg shadow-blue-600/30 active:scale-95 text-sm sm:text-base whitespace-nowrap">
-                ENTER
-            </button>
-        </form>
+    <h3 class="sec-label">⚙️ 난이도 선택</h3>
+    <div class="diff-grid">
+      <button class="diff-card d-easy" data-diff="easy">
+        <span class="diff-ic">1-20</span>
+        <span class="diff-body">
+          <span class="diff-name">기초 · 1~20번</span>
+          <span class="diff-desc">수소(H)부터 칼슘(Ca)까지 · 가장 기본이 되는 원소</span>
+        </span>
+        <span class="diff-side">
+          <span class="diff-cnt" id="cntEasy">20종</span>
+          <span class="diff-best" hidden id="bestEasy"></span>
+        </span>
+      </button>
+      <button class="diff-card d-normal active" data-diff="normal">
+        <span class="diff-ic">1-30</span>
+        <span class="diff-body">
+          <span class="diff-name">표준 · 1~30번</span>
+          <span class="diff-desc">전이 금속(Fe·Cu·Zn 등)까지 확장</span>
+        </span>
+        <span class="diff-side">
+          <span class="diff-cnt" id="cntNormal">30종</span>
+          <span class="diff-best" hidden id="bestNormal"></span>
+        </span>
+      </button>
+      <button class="diff-card d-hard" data-diff="hard">
+        <span class="diff-ic">ALL</span>
+        <span class="diff-body">
+          <span class="diff-name">심화 · 22개정 교과서 전체</span>
+          <span class="diff-desc">첨부 엑셀 &lt;알면 좋은 원소&gt; 수록 원소 전부</span>
+        </span>
+        <span class="diff-side">
+          <span class="diff-cnt" id="cntHard">41종</span>
+          <span class="diff-best" hidden id="bestHard"></span>
+        </span>
+      </button>
     </div>
 
-    <!-- 저작권 푸터 -->
-    <footer class="w-full text-center z-10 select-none mt-1 sm:mt-2 flex-shrink-0">
-        <p class="text-[10px] sm:text-[11px] text-gray-600 pb-1 sm:pb-0">Copyright ⓒ 송쌤과학. All rights reserved.</p>
-    </footer>
+    <h3 class="sec-label">📝 게임 방법</h3>
+    <ul class="howto">
+      <li><span class="n">1.</span><span>떨어지는 <span class="hl-b">원소 이름</span>(수소)을 확인합니다.</span></li>
+      <li><span class="n">2.</span><span><span class="hl-g">원소 기호</span>(H)를 입력하고 <span class="kbd">Enter</span>를 누릅니다.</span></li>
+      <li><span class="n">3.</span><span>연속 정답 시 <span class="hl-y">콤보 보너스</span>! 오염도도 조금씩 낮아집니다.</span></li>
+      <li><span class="n">4.</span><span>틀리면 <span class="hl-r">-50점</span>, 원소가 산성 용액에 닿으면 오염도 상승 → 100%면 종료!</span></li>
+      <li><span class="n">5.</span><span>레벨 2부터 <span class="hl-y">특수 원소</span>가 섞여 떨어집니다. 놓치지 마세요!</span></li>
+    </ul>
 
-    <!-- 시작 화면 모달 -->
-    <div id="startModal" class="modal-bg fixed inset-0 flex flex-col items-center justify-center z-50 p-4 text-center">
-        <div class="w-full max-w-md bg-gray-900/90 border border-gray-700 p-6 sm:p-8 rounded-2xl shadow-2xl relative max-h-[95dvh] overflow-y-auto">
-            
-            <div class="flex justify-between items-start mb-4">
-                <div class="text-5xl sm:text-7xl animate-bounce">🧪</div>
-                <div class="flex-1 text-center pl-2 sm:pl-4 pt-1 sm:pt-2">
-                     <h1 class="text-3xl sm:text-4xl font-black text-white mb-2 tracking-tight">원소 산성비</h1>
-                </div>
-                 <button id="startSoundToggle" class="sound-toggle-btn w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center text-gray-300 hover:text-white hover:border-blue-400 hover:bg-gray-700 transition">
-                    🔊
-                </button>
-            </div>
-            
-            <p class="text-sm sm:text-base text-gray-400 mb-6 font-medium">지구가 오염되기 전에 원소를 정화하세요!</p>
-            
-            <div class="bg-gray-800/80 p-4 sm:p-5 rounded-xl mb-6 text-left border border-gray-700">
-                <h3 class="text-yellow-400 font-bold mb-3 pb-2 border-b border-gray-600 flex items-center gap-2 text-sm sm:text-base">
-                    <span>📝</span> 게임 방법
-                </h3>
-                <ul class="space-y-2 text-gray-300 text-xs sm:text-sm">
-                    <li class="flex items-start gap-2"><span class="text-blue-400">1.</span> 떨어지는 <span class="text-blue-300 font-bold">원소 이름</span>(수소)을 확인합니다.</li>
-                    <li class="flex items-start gap-2"><span class="text-blue-400">2.</span> <span class="text-green-300 font-bold">영어 기호</span>(H)를 입력하고 <span class="bg-gray-700 px-1 rounded text-[10px] sm:text-xs border border-gray-500">Enter</span>를 누릅니다.</li>
-                    <li class="flex items-start gap-2"><span class="text-red-400">3.</span> 틀리면 <span class="text-red-400 font-bold">-50점</span>, 오염도가 증가하면 게임 종료!</li>
-                </ul>
-            </div>
-
-            <div class="flex gap-2 sm:gap-3">
-                <button id="studyBtn" class="flex-1 py-3 sm:py-4 bg-gray-700 hover:bg-gray-600 rounded-xl font-bold text-white transition border border-gray-600 hover:border-gray-400 group flex flex-col items-center justify-center">
-                    <span class="block text-xl sm:text-2xl mb-1 group-hover:scale-110 transition">📖</span>
-                    <span class="text-xs sm:text-sm">원소 공부</span>
-                </button>
-                <button id="startBtn" class="flex-[2] py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 rounded-xl font-bold text-white text-lg sm:text-xl shadow-[0_0_20px_rgba(37,99,235,0.4)] transition transform hover:scale-[1.02] active:scale-95">
-                    작전 개시
-                </button>
-            </div>
-        </div>
+    <h3 class="sec-label">✨ 특수 원소</h3>
+    <div class="power-grid">
+      <div class="power-card" style="--pc:#ffd166">
+        <div class="power-ic">💎</div>
+        <div class="power-nm">황금 원소</div>
+        <div class="power-ds">점수 3배</div>
+      </div>
+      <div class="power-card" style="--pc:#9bf06b">
+        <div class="power-ic">🧪</div>
+        <div class="power-nm">중화 캡슐</div>
+        <div class="power-ds">오염도 −18%</div>
+      </div>
+      <div class="power-card" style="--pc:#3fe3ff">
+        <div class="power-ic">❄️</div>
+        <div class="power-nm">냉각 캡슐</div>
+        <div class="power-ds">6초간 느리게</div>
+      </div>
     </div>
 
-    <!-- 원소 공부 모달 -->
-    <div id="studyModal" class="hidden modal-bg fixed inset-0 flex flex-col items-center justify-center z-[60] p-4">
-        <div class="w-full max-w-2xl bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85dvh]">
-            <div class="p-4 sm:p-5 bg-gray-800 border-b border-gray-700 flex justify-between items-center">
-                <h2 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
-                    <span>📖</span> 원소 주기율표 데이터
-                </h2>
-                <button id="closeStudyBtn" class="w-8 h-8 rounded-full bg-gray-700 hover:bg-red-500 text-gray-300 hover:text-white transition flex items-center justify-center font-bold text-lg">&times;</button>
-            </div>
-            <div class="overflow-y-auto p-0 flex-1 scrollbar-hide">
-                <table class="w-full text-xs sm:text-sm text-left text-gray-300">
-                    <thead class="text-[10px] sm:text-xs text-gray-400 uppercase bg-gray-800/80 sticky top-0 z-10 backdrop-blur-sm">
-                        <tr>
-                            <th class="px-4 sm:px-6 py-3 sm:py-4">번호</th>
-                            <th class="px-4 sm:px-6 py-3 sm:py-4">원소 기호</th>
-                            <th class="px-4 sm:px-6 py-3 sm:py-4">한글 명칭</th>
-                        </tr>
-                    </thead>
-                    <tbody id="elementTableBody" class="divide-y divide-gray-800 bg-gray-900/50">
-                        <!-- JS로 데이터 주입 -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
+    <div class="start-actions">
+      <button class="btn btn-ghost side" id="studyBtn"><span style="font-size:19px">📖</span>원소 공부</button>
+      <button class="btn btn-ghost side" id="rankBtn"><span style="font-size:19px">🏆</span>랭킹</button>
+      <button class="btn btn-primary main" id="startBtn">작전 개시 🚀</button>
     </div>
 
-    <!-- 게임 오버 모달 -->
-    <div id="gameOverModal" class="hidden modal-bg fixed inset-0 flex flex-col items-center justify-center z-50 p-4">
-        <div id="resultCard" class="w-full max-w-md bg-gray-900 border border-gray-700 p-6 sm:p-8 rounded-2xl shadow-2xl relative overflow-hidden mb-4 sm:mb-6">
-            <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent pointer-events-none"></div>
-            
-            <h2 class="text-4xl sm:text-5xl font-black text-red-500 mb-1 sm:mb-2 glitch-effect text-center tracking-tighter">GAME OVER</h2>
-            <p class="text-center text-xs sm:text-sm text-gray-500 mb-6 sm:mb-8 uppercase tracking-[0.2em] font-orbitron">Mission Failed</p>
-            
-            <div class="space-y-2.5 sm:space-y-3 relative z-10">
-                <div class="bg-gray-800/60 p-3 sm:p-4 rounded-xl border border-gray-700 flex justify-between items-center">
-                    <span class="text-[10px] sm:text-xs text-gray-400 font-bold">FINAL SCORE</span>
-                    <span class="text-2xl sm:text-3xl font-orbitron font-bold text-yellow-400" id="finalScore">0</span>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-2.5 sm:gap-3">
-                    <div class="bg-gray-800/60 p-3 sm:p-4 rounded-xl border border-gray-700">
-                        <div class="text-[10px] sm:text-xs text-gray-400 font-bold mb-1">LEVEL</div>
-                        <div class="text-xl sm:text-2xl font-orbitron text-green-400" id="finalLevel">1</div>
-                    </div>
-                    <div class="bg-gray-800/60 p-3 sm:p-4 rounded-xl border border-gray-700">
-                        <div class="text-[10px] sm:text-xs text-gray-400 font-bold mb-1">TIME</div>
-                        <div class="text-xl sm:text-2xl font-orbitron text-cyan-400" id="finalTime">00:00</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="mt-4 sm:mt-6 text-[9px] sm:text-[10px] text-gray-600 text-center border-t border-gray-800 pt-3 sm:pt-4">
-                Acid Rain Project | Designed by 송쌤과학
-            </div>
-        </div>
-
-        <div class="flex gap-2 w-full max-w-md">
-            <button id="homeBtn" class="px-4 sm:px-5 py-3 sm:py-4 bg-gray-700 hover:bg-gray-600 text-white rounded-xl transition font-bold border border-gray-600 flex flex-col items-center justify-center hover:-translate-y-1">
-                <span class="text-lg sm:text-xl leading-none">🏠</span>
-            </button>
-            <button id="restartBtn" class="flex-1 py-3 sm:py-4 bg-red-600 hover:bg-red-500 text-white rounded-xl transition text-base sm:text-lg font-bold shadow-lg shadow-red-900/40 hover:-translate-y-1">
-                다시 시작
-            </button>
-            <button id="captureBtn" class="px-4 sm:px-5 py-3 sm:py-4 bg-gray-800 hover:bg-gray-700 text-white rounded-xl transition border border-gray-600 hover:border-gray-500 flex items-center justify-center gap-2 hover:-translate-y-1">
-                <span class="text-lg sm:text-xl leading-none">📷</span>
-            </button>
-        </div>
+    <div class="creator">
+      <span style="font-size:22px">🔬</span>
+      <span class="creator-txt">
+        <span class="creator-name">송쌤과학</span>
+        <span class="creator-sub">Copyright ⓒ 송쌤과학. All rights reserved.</span>
+      </span>
+      <span class="social">
+        <a class="yt" href="https://www.youtube.com/@songsamscience" target="_blank" rel="noopener noreferrer"
+           title="송쌤과학 유튜브" aria-label="송쌤과학 유튜브">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="1.2" y="4.6" width="21.6" height="14.8" rx="5" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <path d="M10 8.9l6.1 3.1-6.1 3.1z" fill="currentColor"/>
+          </svg>
+        </a>
+        <a class="ig" href="https://www.instagram.com/songsamscience/" target="_blank" rel="noopener noreferrer"
+           title="송쌤과학 인스타그램" aria-label="송쌤과학 인스타그램">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="2.4" y="2.4" width="19.2" height="19.2" rx="5.6" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="2.2"/>
+            <circle cx="17.6" cy="6.4" r="1.35" fill="currentColor"/>
+          </svg>
+        </a>
+      </span>
     </div>
+  </div>
+</div>
+
+<!-- ================= 원소 공부 ================= -->
+<div class="modal hidden" id="studyModal" style="z-index:70">
+  <div class="card card-wide">
+    <div class="modal-head">
+      <h2 class="modal-title">📖 원소 기호 도감</h2>
+      <button class="close-x" id="closeStudyBtn">&times;</button>
+    </div>
+    <div class="tabs" id="studyTabs">
+      <button class="tab" data-diff="easy">1~20번</button>
+      <button class="tab active" data-diff="normal">1~30번</button>
+      <button class="tab" data-diff="hard">22개정 전체</button>
+    </div>
+    <div class="el-grid" id="elGrid"></div>
+    <p style="font-size:10.5px;color:#57668a;text-align:center;margin-top:14px;line-height:1.7">
+      출처 : 22개정 교과서에서 나오는 원소기호 정리 · 알면 좋은 원소
+    </p>
+  </div>
+</div>
+
+<!-- ================= 랭킹 ================= -->
+<div class="modal hidden" id="rankModal" style="z-index:70">
+  <div class="card">
+    <div class="modal-head">
+      <h2 class="modal-title">🏆 명예의 전당</h2>
+      <button class="close-x" id="closeRankBtn">&times;</button>
+    </div>
+    <!-- 📱 기기 랭킹 / 🌐 전체 랭킹 전환 -->
+    <div class="scope-switch" id="rankScope">
+      <button class="scope-btn active" data-scope="local">📱 기기 랭킹</button>
+      <button class="scope-btn" data-scope="global">🌐 전체 랭킹</button>
+    </div>
+
+    <div class="tabs" id="rankTabs">
+      <button class="tab active" data-diff="easy">기초</button>
+      <button class="tab" data-diff="normal">표준</button>
+      <button class="tab" data-diff="hard">심화</button>
+    </div>
+
+    <!-- ── 📱 기기 랭킹 : 이 브라우저에만 쌓이는 기록 ── -->
+    <div id="localPane">
+      <div class="rank-list" id="rankList"></div>
+      <div style="display:flex;gap:7px;margin-top:14px">
+        <button class="btn btn-ghost" id="importRankBtn" style="flex:1;padding:11px;font-size:12.5px">📥 CSV 가져오기</button>
+        <button class="btn btn-ghost" id="exportRankBtn" style="flex:1;padding:11px;font-size:12.5px">📤 CSV 내보내기</button>
+        <button class="btn btn-ghost" id="clearRankBtn" style="padding:11px 15px;font-size:12.5px">🗑️</button>
+      </div>
+      <input type="file" id="rankFileInput" accept=".csv,text/csv" multiple hidden>
+      <p id="rankNote" style="font-size:10.5px;color:#57668a;text-align:center;margin-top:11px;line-height:1.7"></p>
+    </div>
+
+    <!-- ── 🌐 전체 랭킹 : 앱스크립트를 거쳐 구글 시트에 모이는 기록 ── -->
+    <div id="globalPane" hidden>
+      <div class="rank-list" id="globalList"></div>
+      <div style="display:flex;gap:7px;margin-top:14px" id="globalTools">
+        <button class="btn btn-ghost" id="refreshGlobalBtn" style="flex:1;padding:11px;font-size:12.5px">🔄 새로고침</button>
+        <button class="btn btn-ghost" id="globalCsvBtn" style="padding:11px 15px;font-size:12.5px" title="전체 랭킹 CSV로 내려받기">📤</button>
+      </div>
+      <p id="globalNote" style="font-size:10.5px;color:#57668a;text-align:center;margin-top:11px;line-height:1.7"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 일시정지 ================= -->
+<div class="modal hidden" id="pauseModal" style="z-index:75">
+  <div class="card" style="max-width:340px">
+    <div class="hero" style="margin-bottom:10px">
+      <div class="hero-emoji">⏸️</div>
+      <h1 class="hero-title" style="font-size:26px">잠시 멈춤</h1>
+      <p class="hero-sub">준비되면 이어서 하세요</p>
+    </div>
+    <div class="pause-stat">
+      <div><span class="lb">SCORE</span><span class="vl" style="color:var(--gold)" id="pauseScore">0</span></div>
+      <div><span class="lb">LEVEL</span><span class="vl" style="color:var(--lime)" id="pauseLevel">1</span></div>
+      <div><span class="lb">오염도</span><span class="vl" style="color:var(--cyan)" id="pauseAcid">0%</span></div>
+    </div>
+    <div class="go-actions" style="margin-top:0">
+      <button class="btn btn-ghost" id="quitBtn" style="font-size:19px" title="처음 화면으로">🏠</button>
+      <button class="btn btn-primary wide" id="resumeBtn" style="font-size:17px">이어서 하기 ▶</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= 게임 오버 ================= -->
+<div class="modal hidden" id="gameOverModal">
+  <div class="go-wrap">
+    <div class="result-card" id="resultCard">
+      <h2 class="go-title">GAME OVER</h2>
+      <p class="go-sub">MISSION FAILED</p>
+      <div class="newrec" id="newRecord">🎉 신기록 달성!</div>
+
+      <div class="stat-main">
+        <span class="lb">FINAL SCORE</span>
+        <span class="vl" id="finalScore">0</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="lb">LEVEL</div><div class="vl" style="color:var(--lime)" id="finalLevel">1</div></div>
+        <div class="stat-box"><div class="lb">TIME</div><div class="vl" style="color:var(--cyan)" id="finalTime">00:00</div></div>
+        <div class="stat-box"><div class="lb">MAX COMBO</div><div class="vl" style="color:var(--amber)" id="finalCombo">0</div></div>
+        <div class="stat-box"><div class="lb">정화</div><div class="vl" style="color:var(--cyan)" id="finalCleared">0</div></div>
+        <div class="stat-box"><div class="lb">놓침</div><div class="vl" style="color:var(--rose)" id="finalMissed">0</div></div>
+        <div class="stat-box"><div class="lb">💎 황금</div><div class="vl" style="color:var(--gold)" id="finalGold">0</div></div>
+      </div>
+      <div class="ach-row" id="achRow"></div>
+
+      <div class="result-foot">
+        <span id="finalDiff">표준 · 1~30번</span> &nbsp;|&nbsp; Acid Rain Project &nbsp;|&nbsp; Designed by 송쌤과학
+      </div>
+    </div>
+
+    <div class="miss-box" id="missBox" hidden>
+      <div class="miss-title">📌 놓친 원소 — 다음엔 꼭 잡아요!</div>
+      <div class="miss-grid" id="missGrid"></div>
+    </div>
+
+    <div class="save-row">
+      <input type="text" id="nameInput" placeholder="닉네임 (반 친구들이 함께 봐요)" maxlength="10" autocomplete="off">
+      <button class="btn btn-primary" id="saveScoreBtn">등록</button>
+    </div>
+    <p class="save-status" id="saveStatus"></p>
+
+    <div class="go-actions">
+      <button class="btn btn-ghost" id="homeBtn" style="font-size:19px">🏠</button>
+      <button class="btn btn-ghost" id="formSubmitBtn" style="font-size:19px;display:none"
+              title="랭킹 설문지에 제출">📤</button>
+      <button class="btn btn-danger wide" id="restartBtn">다시 시작</button>
+      <button class="btn btn-ghost" id="captureBtn" style="font-size:19px">📷</button>
+    </div>
+  </div>
+</div>
 
 <script>
-/**
- * 사운드 매니저 (Web Audio API)
- */
-class SoundManager {
-    constructor() {
-        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.isMuted = false;
-        this.masterGain = this.ctx.createGain();
-        this.masterGain.connect(this.ctx.destination);
-        this.masterGain.gain.value = 0.3; // 기본 볼륨
-    }
-
-    toggleMute() {
-        this.isMuted = !this.isMuted;
-        this.masterGain.gain.value = this.isMuted ? 0 : 0.3;
-        return this.isMuted;
-    }
-
-    playTone(freq, type, duration, startTime = 0) {
-        if (this.ctx.state === 'suspended') this.ctx.resume();
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        
-        osc.type = type;
-        osc.frequency.value = freq;
-        
-        osc.connect(gain);
-        gain.connect(this.masterGain);
-        
-        osc.start(this.ctx.currentTime + startTime);
-        gain.gain.setValueAtTime(1, this.ctx.currentTime + startTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + startTime + duration);
-        
-        osc.stop(this.ctx.currentTime + startTime + duration);
-    }
-
-    playSuccess() {
-        this.playTone(523.25, 'sine', 0.1, 0);   // C5
-        this.playTone(659.25, 'sine', 0.1, 0.1); // E5
-        this.playTone(783.99, 'sine', 0.3, 0.2); // G5
-    }
-
-    playFail() {
-        this.playTone(150, 'sawtooth', 0.3, 0);
-        this.playTone(100, 'sawtooth', 0.3, 0.1);
-    }
-
-    playLevelUp() {
-        this.playTone(440, 'triangle', 0.1, 0);
-        this.playTone(554, 'triangle', 0.1, 0.1);
-        this.playTone(659, 'triangle', 0.1, 0.2);
-        this.playTone(880, 'triangle', 0.4, 0.3);
-    }
-
-    playGameOver() {
-        this.playTone(400, 'triangle', 0.3, 0);
-        this.playTone(300, 'triangle', 0.3, 0.3);
-        this.playTone(200, 'sawtooth', 0.8, 0.6);
-    }
-}
-
-/**
- * 원소 데이터베이스
- */
+/* ==========================================================================
+   원소 데이터 (22개정 교과서 수록 원소 41종)
+   출처: 22개정 교과서에서 나오는 원소기호 정리_알면 좋은 원소_V1.xlsx
+   ========================================================================== */
 const ELEMENTS = [
-    { atomic: 1, name: "수소", symbol: "H" },
-    { atomic: 2, name: "헬륨", symbol: "He" },
-    { atomic: 3, name: "리튬", symbol: "Li" },
-    { atomic: 4, name: "베릴륨", symbol: "Be" },
-    { atomic: 5, name: "붕소", symbol: "B" },
-    { atomic: 6, name: "탄소", symbol: "C" },
-    { atomic: 7, name: "질소", symbol: "N" },
-    { atomic: 8, name: "산소", symbol: "O" },
-    { atomic: 9, name: "플루오린", symbol: "F" },
-    { atomic: 10, name: "네온", symbol: "Ne" },
-    { atomic: 11, name: "나트륨", symbol: "Na" },
-    { atomic: 12, name: "마그네슘", symbol: "Mg" },
-    { atomic: 13, name: "알루미늄", symbol: "Al" },
-    { atomic: 14, name: "규소", symbol: "Si" },
-    { atomic: 15, name: "인", symbol: "P" },
-    { atomic: 16, name: "황", symbol: "S" },
-    { atomic: 17, name: "염소", symbol: "Cl" },
-    { atomic: 18, name: "아르곤", symbol: "Ar" },
-    { atomic: 19, name: "칼륨", symbol: "K" },
-    { atomic: 20, name: "칼슘", symbol: "Ca" },
-    { atomic: 24, name: "크롬", symbol: "Cr" },
-    { atomic: 25, name: "망가니즈", symbol: "Mn" },
-    { atomic: 26, name: "철", symbol: "Fe" },
-    { atomic: 28, name: "니켈", symbol: "Ni" },
-    { atomic: 29, name: "구리", symbol: "Cu" },
-    { atomic: 30, name: "아연", symbol: "Zn" },
-    { atomic: 35, name: "브로민", symbol: "Br" },
-    { atomic: 38, name: "스트론튬", symbol: "Sr" },
-    { atomic: 47, name: "은", symbol: "Ag" },
-    { atomic: 48, name: "카드뮴", symbol: "Cd" },
-    { atomic: 50, name: "주석", symbol: "Sn" },
-    { atomic: 53, name: "아이오딘", symbol: "I" },
-    { atomic: 56, name: "바륨", symbol: "Ba" },
-    { atomic: 78, name: "백금", symbol: "Pt" },
-    { atomic: 79, name: "금", symbol: "Au" },
-    { atomic: 80, name: "수은", symbol: "Hg" },
-    { atomic: 82, name: "납", symbol: "Pb" }
-].sort((a, b) => a.atomic - b.atomic);
+  {atomic:1 , name:'수소',        symbol:'H' }, {atomic:2 , name:'헬륨',        symbol:'He'},
+  {atomic:3 , name:'리튬',        symbol:'Li'}, {atomic:4 , name:'베릴륨',      symbol:'Be'},
+  {atomic:5 , name:'붕소',        symbol:'B' }, {atomic:6 , name:'탄소',        symbol:'C' },
+  {atomic:7 , name:'질소',        symbol:'N' }, {atomic:8 , name:'산소',        symbol:'O' },
+  {atomic:9 , name:'플루오린',    symbol:'F' }, {atomic:10, name:'네온',        symbol:'Ne'},
+  {atomic:11, name:'나트륨(소듐)',symbol:'Na'}, {atomic:12, name:'마그네슘',    symbol:'Mg'},
+  {atomic:13, name:'알루미늄',    symbol:'Al'}, {atomic:14, name:'규소',        symbol:'Si'},
+  {atomic:15, name:'인',          symbol:'P' }, {atomic:16, name:'황',          symbol:'S' },
+  {atomic:17, name:'염소',        symbol:'Cl'}, {atomic:18, name:'아르곤',      symbol:'Ar'},
+  {atomic:19, name:'칼륨(포타슘)',symbol:'K' }, {atomic:20, name:'칼슘',        symbol:'Ca'},
+  {atomic:21, name:'스칸듐',      symbol:'Sc'}, {atomic:22, name:'타이타늄',    symbol:'Ti'},
+  {atomic:23, name:'바나듐',      symbol:'V' }, {atomic:24, name:'크로뮴',      symbol:'Cr'},
+  {atomic:25, name:'망가니즈',    symbol:'Mn'}, {atomic:26, name:'철',          symbol:'Fe'},
+  {atomic:27, name:'코발트',      symbol:'Co'}, {atomic:28, name:'니켈',        symbol:'Ni'},
+  {atomic:29, name:'구리',        symbol:'Cu'}, {atomic:30, name:'아연',        symbol:'Zn'},
+  {atomic:35, name:'브로민',      symbol:'Br'}, {atomic:38, name:'스트론튬',    symbol:'Sr'},
+  {atomic:47, name:'은',          symbol:'Ag'}, {atomic:48, name:'카드뮴',      symbol:'Cd'},
+  {atomic:50, name:'주석',        symbol:'Sn'}, {atomic:53, name:'아이오딘',    symbol:'I' },
+  {atomic:56, name:'바륨',        symbol:'Ba'}, {atomic:78, name:'백금',        symbol:'Pt'},
+  {atomic:79, name:'금',          symbol:'Au'}, {atomic:80, name:'수은',        symbol:'Hg'},
+  {atomic:82, name:'납',          symbol:'Pb'}
+];
 
-class AcidRainGame {
-    constructor() {
-        this.canvasContainer = document.getElementById('canvasContainer');
-        this.canvas = document.getElementById('gameCanvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.input = document.getElementById('answerInput');
-        this.inputForm = document.getElementById('inputForm');
-        this.timerDisplay = document.getElementById('timerDisplay');
-        this.soundManager = new SoundManager();
-        
-        // 초기 사이즈 설정 및 리사이즈 이벤트 바인딩
-        this.resize();
-        window.addEventListener('resize', () => {
-            // 모바일에서 스크롤/키보드 등에 의한 미세한 리사이즈 발생 시 딜레이 후 처리
-            clearTimeout(this.resizeTimer);
-            this.resizeTimer = setTimeout(() => this.resize(), 100);
-        });
+/* 난이도 정의 --------------------------------------------------------------- */
+const DIFFICULTIES = {
+  easy:   {key:'easy',   emoji:'🌱', short:'기초', label:'기초 · 1~20번',
+           pool:ELEMENTS.filter(e=>e.atomic<=20), speed:0.50, spawn:2300},
+  normal: {key:'normal', emoji:'🧪', short:'표준', label:'표준 · 1~30번',
+           pool:ELEMENTS.filter(e=>e.atomic<=30), speed:0.60, spawn:2050},
+  hard:   {key:'hard',   emoji:'🔥', short:'심화', label:'심화 · 22개정 전체',
+           pool:ELEMENTS.slice(),                 speed:0.72, spawn:1800}
+};
 
-        this.words = [];
-        this.particles = [];
-        
-        this.score = 0;
-        this.acidity = 0;
-        this.maxAcidity = 100;
-        
-        this.level = 1;
-        this.gameTime = 0;
-        this.spawnRate = 2000;
-        this.baseSpeed = 0.6;
-        this.lastSpawnTime = 0;
-        
-        this.isPlaying = false;
-        this.animationId = null;
+/* 특수 원소 -----------------------------------------------------------------
+   보통 원소와 똑같이 "원소 기호"를 입력해서 맞힙니다.
+   맞히면 추가 효과가 따라붙습니다. 레벨 2부터 섞여 떨어집니다.             */
+const SPECIALS = {
+  gold   : {key:'gold',    icon:'💎', hue: 45, color:'#ffd166', name:'황금 원소', effect:'점수 3배'},
+  neutral: {key:'neutral', icon:'🧪', hue:105, color:'#9bf06b', name:'중화 캡슐', effect:'오염도 −18%'},
+  slow   : {key:'slow',    icon:'❄️', hue:190, color:'#3fe3ff', name:'냉각 캡슐', effect:'6초간 감속'}
+};
+const SLOW_SEC   = 6;     // 냉각 캡슐 지속 시간(초)
+const SLOW_RATE  = 0.45;  // 냉각 중 낙하 속도 배수
+const NEUTRALIZE = 18;    // 중화 캡슐이 낮춰 주는 오염도
 
-        this.setupInput();
-        this.setupUI();
-        this.createBackgroundMolecules();
+/* ==========================================================================
+   사운드 엔진 : Web Audio API 로 배경음(BGM)과 효과음(SFX)을 직접 합성
+   외부 음원 파일이 필요 없어 HTML 한 개만으로 어디서든 동작합니다.
+   ========================================================================== */
+class SoundEngine{
+  constructor(){
+    this.ctx=null; this.ready=false;
+    /* 볼륨 0.0 ~ 1.0 (0.2 단계). 0 이면 꺼진 것으로 봅니다. */
+    this.bgmVol = 0.6;  this.sfxVol = 0.8;
+    this.bgmPrev = 0.6; this.sfxPrev = 0.8;   // 음소거 복구용
+    this.bgmPlaying=false;
+    this.bpm=96; this.step=0; this.nextTime=0; this.timer=null;
+
+    /* 4마디 코드 진행 : Am - F - C - G */
+    this.bars=[
+      {root:110.00, tones:[440.00,523.25,659.25,880.00]}, // Am
+      {root: 87.31, tones:[349.23,440.00,523.25,698.46]}, // F
+      {root:130.81, tones:[523.25,659.25,783.99,1046.50]},// C
+      {root: 98.00, tones:[392.00,493.88,587.33,783.99]}  // G
+    ];
+    this.arp=[0,1,2,3,2,3,1,2];
+  }
+
+  get bgmOn(){ return this.bgmVol > 0; }
+  get sfxOn(){ return this.sfxVol > 0; }
+  bgmLevel(){ return 0.22 * this.bgmVol; }
+  sfxLevel(){ return 0.34 * this.sfxVol; }
+
+  init(){
+    if(this.ctx) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    this.ctx = new AC();
+
+    this.master = this.ctx.createGain(); this.master.gain.value = 0.9;
+    this.master.connect(this.ctx.destination);
+
+    this.sfxGain = this.ctx.createGain(); this.sfxGain.gain.value = this.sfxLevel();
+    this.sfxGain.connect(this.master);
+
+    this.bgmGain = this.ctx.createGain(); this.bgmGain.gain.value = 0;
+    this.bgmGain.connect(this.master);
+
+    /* BGM 공간감용 딜레이 */
+    this.delay = this.ctx.createDelay(1.0); this.delay.delayTime.value = 0.29;
+    this.fb    = this.ctx.createGain();     this.fb.gain.value = 0.26;
+    this.wet   = this.ctx.createGain();     this.wet.gain.value = 0.34;
+    this.delay.connect(this.fb); this.fb.connect(this.delay);
+    this.delay.connect(this.wet); this.wet.connect(this.bgmGain);
+
+    /* 노이즈 버퍼(하이햇/스플래시용) */
+    const len = this.ctx.sampleRate;
+    this.noise = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const d = this.noise.getChannelData(0);
+    for(let i=0;i<len;i++) d[i] = Math.random()*2-1;
+
+    this.ready = true;
+  }
+
+  resume(){ if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+  now(){ return this.ctx.currentTime; }
+
+  /* ---------- 기본 음 생성기 ---------- */
+  note(freq, type, when, dur, vol, dest, glideTo){
+    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, when);
+    if(glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, when+dur*0.9);
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(vol, when+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, when+dur);
+    o.connect(g); g.connect(dest||this.sfxGain);
+    o.start(when); o.stop(when+dur+0.03);
+    return g;
+  }
+
+  burst(when, dur, vol, hp, dest){
+    const s = this.ctx.createBufferSource(); s.buffer = this.noise;
+    const f = this.ctx.createBiquadFilter(); f.type='highpass'; f.frequency.value = hp;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(vol, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when+dur);
+    s.connect(f); f.connect(g); g.connect(dest||this.sfxGain);
+    s.start(when); s.stop(when+dur+0.02);
+  }
+
+  /* ---------- 효과음 ---------- */
+  correct(combo=0){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    const t = this.now(), up = Math.min(combo,8)*35;
+    this.note(523.25+up,'triangle',t,      0.10,0.5,this.sfxGain);
+    this.note(659.25+up,'triangle',t+0.055,0.10,0.45,this.sfxGain);
+    this.note(880.00+up,'sine',    t+0.11, 0.26,0.40,this.sfxGain);
+    this.burst(t, 0.06, 0.10, 4200);
+  }
+  wrong(){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    const t=this.now();
+    this.note(196,'sawtooth',t,     0.16,0.26,this.sfxGain,110);
+    this.note(146,'square',  t+0.09,0.20,0.20,this.sfxGain, 92);
+  }
+  splash(){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    const t=this.now();
+    this.note(150,'sine',t,0.32,0.42,this.sfxGain,48);
+    this.burst(t,0.28,0.24,900);
+    this.note(90,'sawtooth',t+0.03,0.26,0.16,this.sfxGain,55);
+  }
+  levelUp(){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    const t=this.now(), s=[523.25,659.25,783.99,1046.50];
+    s.forEach((f,i)=> this.note(f,'triangle',t+i*0.085, i===3?0.5:0.13, 0.42, this.sfxGain));
+    this.burst(t+0.26,0.35,0.12,3000);
+  }
+  gameOver(){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    const t=this.now(), s=[523.25,440.00,349.23,261.63];
+    s.forEach((f,i)=> this.note(f,'triangle',t+i*0.19, i===3?0.9:0.24, 0.38, this.sfxGain));
+    this.note(65.41,'sawtooth',t+0.6,1.1,0.22,this.sfxGain,40);
+  }
+  ui(){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    this.note(880,'sine',this.now(),0.06,0.20,this.sfxGain);
+  }
+
+  /* 특수 원소를 맞혔을 때 — 종류마다 다른 소리 */
+  power(kind){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    const t = this.now();
+    if(kind === 'gold'){
+      [783.99,987.77,1174.66,1567.98].forEach((f,i)=>
+        this.note(f,'triangle',t+i*0.062, i===3?0.44:0.10, 0.42, this.sfxGain));
+      this.burst(t+0.20,0.30,0.10,5000);
+    }else if(kind === 'neutral'){
+      this.note(392.00,'sine',    t,      0.32,0.40,this.sfxGain,783.99);
+      this.note(587.33,'triangle',t+0.08, 0.34,0.28,this.sfxGain);
+      this.burst(t,0.24,0.10,1600);
+    }else{
+      this.note(1318.51,'sine',    t,      0.28,0.34,this.sfxGain,659.25);
+      this.note(880.00, 'triangle',t+0.05, 0.32,0.24,this.sfxGain,440.00);
+      this.burst(t,0.30,0.07,6000);
+    }
+  }
+
+  /* 오염도가 위험 구간에 들어섰을 때의 경고음 */
+  warn(){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    const t = this.now();
+    this.note(330,'square',t,      0.11,0.15,this.sfxGain);
+    this.note(330,'square',t+0.17, 0.11,0.15,this.sfxGain);
+  }
+
+  /* 자기 최고 기록을 넘어섰을 때 */
+  record(){
+    if(!this.ready||!this.sfxOn) return; this.resume();
+    const t = this.now();
+    [659.25,880.00,1046.50,1318.51,1567.98].forEach((f,i)=>
+      this.note(f,'triangle',t+i*0.07, i===4?0.6:0.11, 0.40, this.sfxGain));
+    this.burst(t+0.28,0.4,0.09,4000);
+  }
+
+  /* ---------- 배경음(BGM) ---------- */
+  stepDur(){ return 60/this.bpm/4; }
+
+  setIntensity(level){ this.bpm = Math.min(126, 96 + (level-1)*3.5); }
+
+  startBGM(){
+    this.init(); if(!this.ready) return;
+    this.resume();
+    if(this.bgmPlaying) return;
+    this.bgmPlaying = true;
+    this.step = 0;
+    this.nextTime = this.now() + 0.12;
+    this.bgmGain.gain.cancelScheduledValues(this.now());
+    this.bgmGain.gain.setValueAtTime(0.0001, this.now());
+    this.bgmGain.gain.linearRampToValueAtTime(Math.max(0.0001, this.bgmLevel()), this.now()+1.4);
+    this.timer = setInterval(()=>this.schedule(), 25);
+  }
+
+  stopBGM(fade=0.6){
+    if(!this.ready||!this.bgmPlaying) return;
+    this.bgmGain.gain.cancelScheduledValues(this.now());
+    this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value, this.now());
+    this.bgmGain.gain.linearRampToValueAtTime(0.0001, this.now()+fade);
+    clearInterval(this.timer); this.timer = null;
+    this.bgmPlaying = false;
+  }
+
+  schedule(){
+    while(this.nextTime < this.now() + 0.18){
+      this.playStep(this.step, this.nextTime);
+      this.nextTime += this.stepDur();
+      this.step = (this.step + 1) % 64;
+    }
+  }
+
+  playStep(step, t){
+    const barIdx = Math.floor(step/16), inBar = step % 16;
+    const bar = this.bars[barIdx];
+    const sd = this.stepDur();
+
+    /* 아르페지오 (16분음표) */
+    const f = bar.tones[this.arp[inBar % 8]];
+    this.note(f, 'triangle', t, sd*1.6, 0.085, this.bgmGain);
+    if(inBar % 4 === 0) this.note(f, 'sine', t, sd*2.4, 0.05, this.delay);
+
+    /* 베이스 */
+    if(inBar===0 || inBar===6 || inBar===8 || inBar===14){
+      this.note(bar.root, 'sawtooth', t, sd*2.6, 0.16, this.bgmGain);
+      this.note(bar.root*2, 'sine', t, sd*1.8, 0.06, this.bgmGain);
     }
 
-    createBackgroundMolecules() {
-        const container = document.getElementById('bgMolecules');
-        const shapes = ['⬡', '⬢', '⌬', '⚛'];
-        
-        for (let i = 0; i < 15; i++) {
-            const div = document.createElement('div');
-            div.className = 'molecule';
-            div.innerText = shapes[Math.floor(Math.random() * shapes.length)];
-            div.style.left = `${Math.random() * 100}%`;
-            div.style.animationDuration = `${15 + Math.random() * 20}s`;
-            div.style.animationDelay = `${Math.random() * 10}s`;
-            div.style.fontSize = `${2 + Math.random() * 4}rem`;
-            container.appendChild(div);
-        }
+    /* 패드 (마디 첫 박) */
+    if(inBar === 0){
+      const lp = this.ctx.createBiquadFilter();
+      lp.type='lowpass'; lp.frequency.setValueAtTime(700,t);
+      lp.frequency.linearRampToValueAtTime(1500, t+sd*8);
+      lp.connect(this.bgmGain);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.linearRampToValueAtTime(0.055, t+sd*4);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+sd*15);
+      g.connect(lp);
+      [0,-9,9].forEach(det=>{
+        const o=this.ctx.createOscillator();
+        o.type='sawtooth'; o.frequency.value=bar.tones[0]/2; o.detune.value=det;
+        o.connect(g); o.start(t); o.stop(t+sd*16);
+      });
     }
 
-    resize() {
-        // 부모 컨테이너(canvasContainer)의 실제 크기에 맞춰 캔버스 크기 동적 조절
-        const width = this.canvasContainer.clientWidth;
-        const height = this.canvasContainer.clientHeight;
-        
-        // 크기가 0일 경우(숨겨져 있을 때 등) 업데이트 방지
-        if (width === 0 || height === 0) return;
-
-        this.canvas.width = width;
-        this.canvas.height = height;
+    /* 드럼 */
+    if(inBar===0 || inBar===8 || inBar===11){
+      const o=this.ctx.createOscillator(), g=this.ctx.createGain();
+      o.type='sine';
+      o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(45,t+0.12);
+      g.gain.setValueAtTime(0.42,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);
+      o.connect(g); g.connect(this.bgmGain); o.start(t); o.stop(t+0.24);
     }
+    if(inBar % 2 === 1) this.burst(t, 0.035, inBar%4===3 ? 0.05 : 0.028, 8000, this.bgmGain);
+    if(inBar===4 || inBar===12) this.burst(t, 0.12, 0.09, 1800, this.bgmGain); // 스네어
+  }
 
-    reset() {
-        this.words = [];
-        this.particles = [];
-        this.score = 0;
-        this.acidity = 0;
-        
-        this.level = 1;
-        this.gameTime = 0;
-        this.baseSpeed = 0.6;
-        this.spawnRate = 2000;
-        
-        this.updateUI();
-        this.updateTimer();
-        this.input.value = '';
-        this.input.focus();
-    }
-
-    start() {
-        // AudioContext는 사용자 상호작용 후 시작해야 함
-        if (this.soundManager.ctx.state === 'suspended') {
-            this.soundManager.ctx.resume();
-        }
-        
-        // 캔버스 크기 한번 더 확인 (모달이 닫히면서 레이아웃 변경 대비)
-        this.resize();
-        
-        this.reset();
-        this.isPlaying = true;
-        this.lastTime = performance.now();
-        this.loop(this.lastTime);
-    }
-
-    spawnWord() {
-        const el = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
-        
-        // 모바일에서는 글씨를 약간 작게 설정
-        const fontSize = this.canvas.width < 600 ? 18 : 22;
-        this.ctx.font = `bold ${fontSize}px "Noto Sans KR"`;
-        
-        const textWidth = this.ctx.measureText(el.name).width;
-        const maxWidth = this.canvas.width - textWidth - 20;
-        const x = Math.random() * maxWidth + 10;
-        
-        this.words.push({
-            name: el.name,
-            symbol: el.symbol,
-            x: x,
-            y: -30,
-            // 캔버스 높이에 비례하여 속도 약간 보정 (모바일에서도 비슷한 체감 속도)
-            speed: (this.baseSpeed + (Math.random() * 0.4)) * (this.canvas.height / 500), 
-            color: `hsl(${Math.random() * 60 + 180}, 100%, 75%)`,
-            glowColor: `hsl(${Math.random() * 60 + 180}, 100%, 50%)`
-        });
-    }
-
-    update(dt) {
-        this.gameTime += dt;
-        this.updateTimer();
-        
-        // 30초(30000ms)마다 레벨 업으로 변경
-        const calculatedLevel = Math.floor(this.gameTime / 30000) + 1;
-        if (calculatedLevel > this.level) {
-            this.levelUp(calculatedLevel);
-        }
-
-        if (performance.now() - this.lastSpawnTime > this.spawnRate) {
-            this.spawnWord();
-            this.lastSpawnTime = performance.now();
-        }
-
-        for (let i = this.words.length - 1; i >= 0; i--) {
-            const word = this.words[i];
-            word.y += word.speed * (dt / 16);
-
-            // 캔버스 하단에 닿았는지 체크
-            if (word.y > this.canvas.height - 10) {
-                this.takeDamage(10);
-                this.soundManager.playFail();
-                this.createExplosion(word.x, this.canvas.height, '#ef4444');
-                this.words.splice(i, 1);
-            }
-        }
-
-        for (let i = this.particles.length - 1; i >= 0; i--) {
-            const p = this.particles[i];
-            p.x += p.vx;
-            p.y += p.vy;
-            p.life -= 0.02;
-            if (p.life <= 0) {
-                this.particles.splice(i, 1);
-            }
-        }
-    }
-
-    levelUp(newLevel) {
-        this.level = newLevel;
-        this.baseSpeed = 0.6 + (this.level - 1) * 0.4;
-        this.spawnRate = Math.max(500, 2000 - (this.level - 1) * 200);
-
-        this.soundManager.playLevelUp();
-
-        document.getElementById('levelDisplayDesktop').innerText = this.level;
-        document.getElementById('levelDisplayMobile').innerText = this.level;
-        
-        const notice = document.getElementById('levelUpNotice');
-        notice.innerText = `🚀 LEVEL ${this.level}!`;
-        notice.classList.remove('opacity-0', 'scale-50');
-        notice.classList.add('opacity-100', 'scale-100'); 
-        
-        setTimeout(() => {
-            notice.classList.remove('opacity-100', 'scale-100');
-            notice.classList.add('opacity-0', 'scale-50');
-        }, 2000);
-    }
-
-    updateTimer() {
-        const totalSeconds = Math.floor(this.gameTime / 1000);
-        const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-        const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-        const timeString = `${minutes}:${seconds}`;
-        
-        if (this.timerDisplay) {
-            this.timerDisplay.innerText = timeString;
-        }
-    }
-
-    draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // --- 바닥 오염도 시각화 ---
-        const groundHeight = 20;
-        const pollutionRatio = this.acidity / 100;
-        
-        const hue = 180 * (1 - pollutionRatio); 
-        const saturation = 50 + (pollutionRatio * 50); 
-        const lightness = 40 - (pollutionRatio * 20); 
-        
-        const groundGradient = this.ctx.createLinearGradient(0, this.canvas.height - groundHeight, 0, this.canvas.height);
-        groundGradient.addColorStop(0, `hsla(${hue}, ${saturation}%, ${lightness}%, 0.8)`);
-        groundGradient.addColorStop(1, `hsla(${hue}, ${saturation}%, ${Math.max(10, lightness - 10)}%, 1)`);
-
-        this.ctx.fillStyle = groundGradient;
-        this.ctx.fillRect(0, this.canvas.height - groundHeight, this.canvas.width, groundHeight);
-
-        // 오염 기포 효과
-        if (pollutionRatio > 0.2) {
-             this.ctx.fillStyle = `hsla(${hue}, 100%, 70%, 0.5)`;
-             const bubbles = Math.floor(pollutionRatio * (this.canvas.width / 100)); // 너비에 비례해 기포 개수 조정
-             for(let i=0; i<bubbles; i++) {
-                 const bx = Math.random() * this.canvas.width;
-                 const by = this.canvas.height - groundHeight - (Math.random() * 10);
-                 const bSize = Math.random() * 3 + 1;
-                 this.ctx.beginPath();
-                 this.ctx.arc(bx, by, bSize, 0, Math.PI*2);
-                 this.ctx.fill();
-             }
-        }
-
-        // 텍스트 스타일 (화면 크기에 맞춰 동적 변경)
-        const fontSize = this.canvas.width < 600 ? 18 : 22;
-        this.ctx.font = `bold ${fontSize}px "Noto Sans KR"`;
-        this.ctx.textAlign = 'left';
-        this.ctx.textBaseline = 'middle';
-        
-        this.words.forEach(word => {
-            // 네온 글로우 효과
-            this.ctx.shadowBlur = 10;
-            this.ctx.shadowColor = word.glowColor;
-            
-            // 텍스트
-            this.ctx.fillStyle = word.color;
-            this.ctx.fillText(word.name, word.x, word.y);
-            
-            // 빗물 꼬리
-            this.ctx.shadowBlur = 0;
-            const gradient = this.ctx.createLinearGradient(word.x, word.y - 10, word.x, word.y - 40);
-            gradient.addColorStop(0, word.color);
-            gradient.addColorStop(1, 'transparent');
-            this.ctx.fillStyle = gradient;
-            this.ctx.fillRect(word.x + 2, word.y - 30, 2, 20);
-        });
-
-        // 파티클
-        this.particles.forEach(p => {
-            this.ctx.globalAlpha = p.life;
-            this.ctx.fillStyle = p.color;
-            this.ctx.beginPath();
-            this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            this.ctx.fill();
-        });
-        this.ctx.globalAlpha = 1.0;
-    }
-
-    loop(time) {
-        if (!this.isPlaying) return;
-
-        const dt = time - this.lastTime;
-        this.lastTime = time;
-
-        this.update(dt);
-        this.draw();
-
-        this.animationId = requestAnimationFrame(this.loop.bind(this));
-    }
-
-    checkAnswer() {
-        const val = this.input.value.trim().toLowerCase();
-        if (!val) return;
-
-        const sortedWords = this.words.map((w, i) => ({...w, originalIndex: i}))
-                                      .sort((a, b) => b.y - a.y);
-
-        const target = sortedWords.find(w => w.symbol.toLowerCase() === val);
-
-        if (target) {
-            const idx = this.words.findIndex(w => w === this.words[target.originalIndex] || (w.x === target.x && w.y === target.y));
-            if (idx !== -1) {
-                this.words.splice(idx, 1);
-                this.createExplosion(target.x + 20, target.y, '#60a5fa');
-                this.soundManager.playSuccess();
-                this.score += 100;
-                this.input.value = '';
-                this.updateUI();
-                
-                this.input.style.borderColor = '#4ade80';
-                setTimeout(() => this.input.style.borderColor = '#374151', 200);
-            }
-        } else {
-            this.score = Math.max(0, this.score - 50);
-            this.soundManager.playFail();
-            this.updateUI();
-            
-            this.input.classList.remove('shake-input');
-            void this.input.offsetWidth;
-            this.input.classList.add('shake-input');
-        }
-    }
-
-    takeDamage(amount) {
-        this.acidity += amount;
-        if (this.acidity >= 100) {
-            this.acidity = 100;
-            this.gameOver();
-        }
-        
-        const overlay = document.getElementById('damageOverlay');
-        overlay.classList.remove('damage-flash');
-        void overlay.offsetWidth;
-        overlay.classList.add('damage-flash');
-
-        this.updateUI();
-    }
-
-    createExplosion(x, y, color) {
-        for (let i = 0; i < 15; i++) {
-            this.particles.push({
-                x: x,
-                y: y,
-                vx: (Math.random() - 0.5) * 6,
-                vy: (Math.random() - 0.5) * 6,
-                radius: Math.random() * 3 + 1,
-                color: color,
-                life: 1.0
-            });
-        }
-    }
-
-    updateUI() {
-        document.getElementById('scoreDisplay').innerText = this.score;
-        document.getElementById('levelDisplayDesktop').innerText = this.level;
-        document.getElementById('levelDisplayMobile').innerText = this.level;
-        
-        const acidBar = document.getElementById('acidBar');
-        const acidText = document.getElementById('acidText');
-        
-        acidBar.style.width = `${this.acidity}%`;
-        acidText.innerText = `${this.acidity}%`;
-        
-        if (this.acidity > 70) {
-            acidText.className = 'font-orbitron font-bold text-red-500 animate-pulse text-xs sm:text-sm';
-            acidBar.style.background = 'linear-gradient(90deg, #ef4444, #b91c1c)';
-        } else if (this.acidity > 40) {
-            acidText.className = 'font-orbitron font-bold text-yellow-400 text-xs sm:text-sm';
-            acidBar.style.background = 'linear-gradient(90deg, #eab308, #ef4444)';
-        } else {
-            acidText.className = 'font-orbitron font-bold text-green-400 text-xs sm:text-sm';
-            acidBar.style.background = 'linear-gradient(90deg, #22c55e, #eab308)';
-        }
-    }
-
-    setupInput() {
-        // 첫 글자 대문자 처리
-        this.input.addEventListener('input', () => {
-            const val = this.input.value;
-            if (val.length > 0) {
-                this.input.value = val.charAt(0).toUpperCase() + val.slice(1).toLowerCase();
-            }
-        });
-
-        // Form Submit (모바일 가상 키보드 호환)
-        this.inputForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.checkAnswer();
-            // 포커스 유지 (모바일 환경에 따라 다르게 작동할 수 있음)
-            this.input.focus();
-        });
-    }
-
-    setupUI() {
-        // 사운드 토글 동기화
-        const soundBtns = document.querySelectorAll('.sound-toggle-btn');
-        soundBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const isMuted = this.soundManager.toggleMute();
-                soundBtns.forEach(b => {
-                    b.innerHTML = isMuted ? '🔇' : '🔊';
-                    b.classList.toggle('sound-off', isMuted);
-                    b.classList.toggle('text-red-400', isMuted);
-                    b.classList.toggle('border-red-400', isMuted);
-                });
-            });
-        });
-
-        // 공부하기 모달
-        const studyModal = document.getElementById('studyModal');
-        const tableBody = document.getElementById('elementTableBody');
-
-        document.getElementById('studyBtn').addEventListener('click', () => {
-            tableBody.innerHTML = ELEMENTS.map(el => `
-                <tr class="hover:bg-gray-800 transition border-b border-gray-800/50">
-                    <td class="px-4 sm:px-6 py-2 sm:py-4 font-mono text-blue-300 font-bold">${el.atomic}</td>
-                    <td class="px-4 sm:px-6 py-2 sm:py-4 font-bold text-yellow-400 text-base sm:text-lg">${el.symbol}</td>
-                    <td class="px-4 sm:px-6 py-2 sm:py-4 text-white text-xs sm:text-sm">${el.name}</td>
-                </tr>
-            `).join('');
-            studyModal.classList.remove('hidden');
-        });
-
-        document.getElementById('closeStudyBtn').addEventListener('click', () => {
-            studyModal.classList.add('hidden');
-        });
-
-        // 캡처 버튼
-        document.getElementById('captureBtn').addEventListener('click', async () => {
-            const target = document.getElementById('resultCard');
-            const btn = document.getElementById('captureBtn');
-            const originalText = btn.innerHTML;
-            
-            try {
-                btn.innerHTML = '<span class="animate-spin text-sm">⏳</span>';
-                const canvas = await html2canvas(target, {
-                    backgroundColor: '#111827',
-                    scale: 2
-                });
-                
-                const link = document.createElement('a');
-                link.download = `AcidRain_Score_${this.score}.png`;
-                link.href = canvas.toDataURL('image/png');
-                link.click();
-                
-                btn.innerHTML = '<span class="text-sm">✅</span>';
-                setTimeout(() => btn.innerHTML = originalText, 2000);
-            } catch (err) {
-                console.error(err);
-                btn.innerHTML = '❌';
-                setTimeout(() => btn.innerHTML = originalText, 2000);
-            }
-        });
-    }
-
-    gameOver() {
-        this.isPlaying = false;
-        cancelAnimationFrame(this.animationId);
-        
-        this.soundManager.playGameOver();
-
-        document.getElementById('finalScore').innerText = this.score;
-        document.getElementById('finalLevel').innerText = this.level;
-        document.getElementById('finalTime').innerText = this.timerDisplay.innerText;
-        
-        const modal = document.getElementById('gameOverModal');
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-    }
+  setBgmVol(v){
+    this.bgmVol = Math.max(0, Math.min(1, Math.round(v*5)/5));
+    if(this.bgmVol > 0) this.bgmPrev = this.bgmVol;
+    if(!this.ready) return;
+    this.bgmGain.gain.cancelScheduledValues(this.now());
+    this.bgmGain.gain.setValueAtTime(Math.max(0.0001, this.bgmGain.gain.value), this.now());
+    this.bgmGain.gain.linearRampToValueAtTime(Math.max(0.0001, this.bgmLevel()), this.now()+0.3);
+  }
+  setSfxVol(v){
+    this.sfxVol = Math.max(0, Math.min(1, Math.round(v*5)/5));
+    if(this.sfxVol > 0) this.sfxPrev = this.sfxVol;
+    if(!this.ready) return;
+    this.sfxGain.gain.setTargetAtTime(this.sfxLevel(), this.now(), 0.05);
+  }
 }
 
-const game = new AcidRainGame();
+/* ==========================================================================
+   캔버스 유틸
+   ========================================================================== */
+function rr(ctx,x,y,w,h,r){
+  const rad = Math.max(0, Math.min(r, w/2, h/2));
+  ctx.beginPath();
+  if(ctx.roundRect){ ctx.roundRect(x,y,w,h,rad); return; }
+  ctx.moveTo(x+rad,y);
+  ctx.arcTo(x+w,y,x+w,y+h,rad); ctx.arcTo(x+w,y+h,x,y+h,rad);
+  ctx.arcTo(x,y+h,x,y,rad);     ctx.arcTo(x,y,x+w,y,rad);
+  ctx.closePath();
+}
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp  = (a,b,t)=>a+(b-a)*t;
+/* 색상환을 청록(안전) → 초록 → 노랑 → 빨강(위험) 방향으로 내려가게 보정 */
+const hueWrap = h => ((h % 360) + 360) % 360;
 
-document.getElementById('startBtn').addEventListener('click', () => {
-    document.getElementById('startModal').classList.add('hidden');
-    game.start();
+/* ==========================================================================
+   게임 본체
+   ========================================================================== */
+class AcidRainGame{
+  constructor(sound){
+    this.sound = sound;
+    this.wrap   = document.getElementById('canvasWrap');
+    this.canvas = document.getElementById('gameCanvas');
+    this.ctx    = this.canvas.getContext('2d');
+    this.input  = document.getElementById('answerInput');
+
+    this.difficulty = DIFFICULTIES.normal;
+    this.W = 0; this.H = 0;
+
+    this.drops=[]; this.particles=[]; this.rings=[]; this.pops=[]; this.bubbles=[]; this.rain=[];
+    this.score=0; this.acidity=0; this.level=1; this.gameTime=0;
+    this.combo=0; this.maxCombo=0; this.cleared=0; this.missed=0;
+    this.isPlaying=false; this.paused=false; this.shake=0; this.t=0;
+    this.spawnAcc=0; this.animId=null;
+    this.slowTimer=0; this.goldCount=0; this.missedList=[]; this.clearedSet=new Set();
+    this.comboMark=0; this.bestScore=0; this.newRecordHit=false; this.warned=false;
+
+    this.resize();
+    window.addEventListener('resize', ()=>{ clearTimeout(this._rt); this._rt=setTimeout(()=>this.resize(),120); });
+    if(window.visualViewport) window.visualViewport.addEventListener('resize', ()=>{
+      clearTimeout(this._rt); this._rt=setTimeout(()=>this.resize(),120);
+    });
+
+    this.initRain();
+    this.bindInput();
+    /* 다른 탭·앱으로 넘어가면 게임이 혼자 진행되지 않도록 멈춥니다 */
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.hidden && this.isPlaying && !this.paused) this.pause();
+    });
+  }
+
+  /* ---------- 화면 크기 / 해상도 ---------- */
+  resize(){
+    const w = this.wrap.clientWidth, h = this.wrap.clientHeight;
+    if(!w || !h) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    this.canvas.width  = Math.round(w*dpr);
+    this.canvas.height = Math.round(h*dpr);
+    this.ctx.setTransform(dpr,0,0,dpr,0,0);
+    const prevW = this.W;
+    this.W = w; this.H = h;
+
+    /* 가로 폭이 바뀌면 떠 있던 캡슐이 화면 밖으로 밀려나지 않게 맞춰 줍니다 */
+    if(prevW > 0 && Math.abs(prevW - w) > 1){
+      const k = w / prevW;
+      this.drops.forEach(d=>{
+        d.x = clamp(d.x*k, 8, Math.max(8, w - d.w - 8));
+      });
+    }
+    this.initRain();
+  }
+
+  initRain(){
+    this.rain = [];
+    const n = Math.round(clamp(this.W/12, 26, 90));
+    for(let i=0;i<n;i++){
+      const depth = Math.random();
+      this.rain.push({
+        x: Math.random()*this.W,
+        y: Math.random()*this.H,
+        len: 12 + depth*46,
+        sp: 90 + depth*300,
+        a: 0.05 + depth*0.16,
+        wobble: Math.random()*6.28
+      });
+    }
+  }
+
+  fontPx(){ return clamp(this.W/34, 15, 22); }
+
+  /* ---------- 상태 ---------- */
+  setDifficulty(key){
+    this.difficulty = DIFFICULTIES[key] || DIFFICULTIES.normal;
+    document.getElementById('diffBadge').textContent =
+      `${this.difficulty.emoji} ${this.difficulty.short}`;
+  }
+
+  reset(){
+    this.drops=[]; this.particles=[]; this.rings=[]; this.pops=[]; this.bubbles=[];
+    this.score=0; this.acidity=0; this.level=1; this.gameTime=0;
+    this.combo=0; this.maxCombo=0; this.cleared=0; this.missed=0;
+    this.baseSpeed = this.difficulty.speed;
+    this.spawnRate = this.difficulty.spawn;
+    this.shake=0; this.paused=false; this.spawnAcc=0;
+    this.slowTimer=0; this.goldCount=0; this.missedList=[]; this.clearedSet=new Set();
+    this.comboMark=0; this.newRecordHit=false; this.warned=false;
+
+    /* 이번 판에서 넘어야 할 자기 최고 기록 */
+    this.bestScore = Ranking.best(this.difficulty.key);
+
+    this.setDanger(false);
+    this.showSlow();
+    this.updateHUD(); this.updateTimer(); this.showCombo();
+    this.input.value=''; this.input.className='';
+  }
+
+  start(){
+    this.sound.init(); this.sound.resume();
+    this.resize(); this.reset();
+    this.isPlaying = true;
+    this.sound.setIntensity(1);
+    if(this.sound.bgmOn) this.sound.startBGM();
+    this.lastTime = performance.now();
+    this.animId = requestAnimationFrame(t=>this.loop(t));
+    setTimeout(()=>this.input.focus(), 60);
+  }
+
+  /* ---------- 원소 낙하 ---------- */
+
+  /* 화면에 이미 떠 있는 원소는 되도록 피해서 고릅니다 */
+  pickElement(){
+    const pool = this.difficulty.pool;
+    const onScreen = new Set(this.drops.map(d=>d.atomic));
+    const fresh = pool.filter(e=>!onScreen.has(e.atomic));
+    const from = fresh.length ? fresh : pool;
+    return from[Math.floor(Math.random()*from.length)];
+  }
+
+  /* 아직 위쪽에 있는 캡슐과 가로로 겹치지 않는 자리를 찾습니다 */
+  pickX(w){
+    const span = Math.max(1, this.W - w - 16);
+    const near = this.H*0.45;
+    let bestX = 8 + Math.random()*span, bestCost = Infinity;
+    for(let i=0;i<8;i++){
+      const x = 8 + Math.random()*span;
+      let cost = 0;
+      for(const d of this.drops){
+        if(d.y > near) continue;                 // 이미 내려간 캡슐은 가릴 일이 적음
+        const ov = Math.min(x+w, d.x+d.w) - Math.max(x, d.x);
+        if(ov > 0) cost += ov * (1 - d.y/near);
+      }
+      if(cost < bestCost){ bestCost = cost; bestX = x; }
+      if(cost === 0) break;
+    }
+    return bestX;
+  }
+
+  /* 이번에 떨어질 것이 특수 원소인지 정합니다 */
+  rollSpecial(){
+    if(this.level < 2) return null;
+    const chance = Math.min(0.20, 0.13 + (this.level-2)*0.012);
+    if(Math.random() > chance) return null;
+    /* 오염도가 높을수록 중화 캡슐이 자주 나오도록 */
+    const w = {gold:45, neutral:(this.acidity >= 55 ? 62 : 30), slow:25};
+    let r = Math.random()*(w.gold + w.neutral + w.slow);
+    if((r -= w.gold)    < 0) return 'gold';
+    if((r -= w.neutral) < 0) return 'neutral';
+    return 'slow';
+  }
+
+  spawnDrop(){
+    /* 크기를 못 잡은 상태에서 만들면 캡슐 폭이 음수가 되어 보이지 않습니다 */
+    if(this.W < 80 || this.H < 80){ this.resize(); if(this.W < 80 || this.H < 80) return; }
+
+    const el = this.pickElement();
+    const special = this.rollSpecial();
+    const fs = this.fontPx();
+    const c = this.ctx;
+    c.font = `${fs}px Jua, sans-serif`;
+    const tw = c.measureText(el.name).width;
+    const h  = fs + 20;
+    const w  = clamp(tw + h + 30 + (special ? h*0.9 : 0), 70, Math.max(70, this.W - 16));
+    const x  = this.pickX(w);
+
+    this.drops.push({
+      name:el.name, symbol:el.symbol, atomic:el.atomic,
+      x, y:-h, w, h, special,
+      speed:(this.baseSpeed + Math.random()*0.4) * (this.H/500) * 62.5,
+      hue: special ? SPECIALS[special].hue : 178 + Math.random()*32,
+      seed: Math.random()*6.28,
+      sway: 0.35 + Math.random()*0.5
+    });
+  }
+
+  /* ---------- 업데이트 ---------- */
+  update(dt){
+    const s = dt/1000;
+    this.t += s;
+    this.gameTime += dt;
+    this.updateTimer();
+
+    /* 30초마다 레벨업 */
+    const lv = Math.floor(this.gameTime/30000) + 1;
+    if(lv > this.level) this.levelUp(lv);
+
+    /* ❄️ 냉각 캡슐 지속 시간 */
+    if(this.slowTimer > 0){
+      this.slowTimer = Math.max(0, this.slowTimer - s);
+      this.showSlow();
+    }
+    const slowK = this.slowTimer > 0 ? SLOW_RATE : 1;
+
+    /* 스폰 — 벽시계가 아니라 실제로 흐른 게임 시간을 기준으로 셉니다.
+       (프레임이 끊기거나 탭을 다녀와도 원소가 한꺼번에 쏟아지지 않습니다) */
+    this.spawnAcc += dt;
+    if(this.spawnAcc >= this.spawnRate){
+      this.spawnAcc = 0;
+      this.spawnDrop();
+    }
+
+    const surfaceY = this.surfaceY();
+
+    /* 원소 낙하 */
+    for(let i=this.drops.length-1;i>=0;i--){
+      const d = this.drops[i];
+      d.y += d.speed * slowK * s;
+      if(d.y + d.h/2 >= surfaceY){
+        this.splash(d, surfaceY);
+        this.drops.splice(i,1);
+        this.missed++;
+        this.noteMissed(d);
+        this.combo = 0; this.comboMark = 0; this.showCombo();
+        this.takeDamage(10);
+        if(!this.isPlaying) return;
+      }
+    }
+
+    /* 배경 빗줄기 */
+    this.rain.forEach(r=>{
+      r.y += r.sp*s;
+      if(r.y - r.len > this.H){ r.y = -r.len; r.x = Math.random()*this.W; }
+    });
+
+    /* 파티클 */
+    for(let i=this.particles.length-1;i>=0;i--){
+      const p=this.particles[i];
+      p.vy += (p.g||300)*s;
+      p.x += p.vx*s; p.y += p.vy*s;
+      p.life -= s*(p.decay||1.6);
+      if(p.life<=0) this.particles.splice(i,1);
+    }
+    /* 링 */
+    for(let i=this.rings.length-1;i>=0;i--){
+      const r=this.rings[i];
+      r.r += (r.max - r.r)*Math.min(1, s*9);
+      r.life -= s*1.9;
+      if(r.life<=0) this.rings.splice(i,1);
+    }
+    /* 점수 팝업 */
+    for(let i=this.pops.length-1;i>=0;i--){
+      const p=this.pops[i];
+      p.y += p.vy*s; p.vy *= 0.94; p.life -= s*1.15;
+      if(p.life<=0) this.pops.splice(i,1);
+    }
+    /* 오염 기포 */
+    const target = Math.floor(this.acidity/9);
+    if(this.bubbles.length < target && Math.random()<0.25){
+      this.bubbles.push({x:Math.random()*this.W, y:this.H, r:1.5+Math.random()*3.5,
+                         sp:14+Math.random()*30, ph:Math.random()*6.28});
+    }
+    for(let i=this.bubbles.length-1;i>=0;i--){
+      const b=this.bubbles[i];
+      b.y -= b.sp*s;
+      if(b.y < surfaceY-4 || this.bubbles.length > target+3) this.bubbles.splice(i,1);
+    }
+
+    if(this.shake>0) this.shake = Math.max(0, this.shake - dt*0.035);
+  }
+
+  surfaceY(){ return this.H - (14 + (this.acidity/100)*(this.H*0.42)); }
+
+  /* ---------- 렌더 ---------- */
+  draw(){
+    const c = this.ctx, W=this.W, H=this.H;
+    c.clearRect(0,0,W,H);
+    c.save();
+    if(this.shake>0){
+      c.translate((Math.random()-0.5)*this.shake, (Math.random()-0.5)*this.shake);
+    }
+
+    this.drawBackdrop(c,W,H);
+    this.drawPool(c,W,H);
+    this.drawDrops(c);
+    this.drawFX(c);
+    this.drawDanger(c,W,H);
+    this.drawSlow(c,W,H);
+
+    c.restore();
+  }
+
+  drawBackdrop(c,W,H){
+    /* 상단 광원 */
+    const g = c.createLinearGradient(0,0,0,H*0.7);
+    g.addColorStop(0,'rgba(63,227,255,.055)');
+    g.addColorStop(1,'transparent');
+    c.fillStyle=g; c.fillRect(0,0,W,H);
+
+    /* 배경 빗줄기 */
+    c.lineCap='round';
+    this.rain.forEach(r=>{
+      const lg=c.createLinearGradient(r.x,r.y-r.len,r.x,r.y);
+      lg.addColorStop(0,'rgba(120,180,255,0)');
+      lg.addColorStop(1,`rgba(150,205,255,${r.a})`);
+      c.strokeStyle=lg; c.lineWidth = r.a*7;
+      c.beginPath(); c.moveTo(r.x, r.y-r.len); c.lineTo(r.x, r.y); c.stroke();
+    });
+  }
+
+  drawPool(c,W,H){
+    const ratio = this.acidity/100;
+    const surY  = this.surfaceY();
+    const hue   = hueWrap(lerp(172, -14, Math.pow(ratio,1.15)));
+    const sat   = lerp(66, 94, ratio);
+
+    const wave = (amp, spd, off, step)=>{
+      c.beginPath(); c.moveTo(0,H);
+      for(let x=0;x<=W;x+=step){
+        const y = surY + Math.sin(x*0.021 + this.t*spd + off)*amp
+                       + Math.sin(x*0.052 - this.t*(spd*1.5) + off)*amp*0.45;
+        x===0 ? c.lineTo(0,y) : c.lineTo(x,y);
+      }
+      c.lineTo(W,H); c.closePath();
+    };
+
+    /* 뒤 레이어 */
+    wave(4.5, 1.5, 1.2, 8);
+    const g1=c.createLinearGradient(0,surY-8,0,H);
+    g1.addColorStop(0,`hsla(${hue},${sat}%,38%,.20)`);
+    g1.addColorStop(1,`hsla(${hue},${sat}%,13%,.42)`);
+    c.fillStyle=g1; c.fill();
+
+    /* 앞 레이어 */
+    wave(3.2, 2.3, 0, 6);
+    const g2=c.createLinearGradient(0,surY-6,0,H);
+    g2.addColorStop(0,`hsla(${hue},${sat}%,48%,.48)`);
+    g2.addColorStop(0.16,`hsla(${hue},${sat}%,26%,.74)`);
+    g2.addColorStop(0.55,`hsla(${hue},${sat}%,15%,.90)`);
+    g2.addColorStop(1,`hsla(${hueWrap(hue-12)},${sat}%,8%,.97)`);
+    c.fillStyle=g2; c.fill();
+
+    /* 수면 하이라이트 */
+    c.save();
+    c.shadowBlur=16; c.shadowColor=`hsla(${hue},100%,60%,.85)`;
+    c.strokeStyle=`hsla(${hue},100%,${lerp(70,64,ratio)}%,.92)`; c.lineWidth=1.8;
+    c.beginPath();
+    for(let x=0;x<=W;x+=6){
+      const y = surY + Math.sin(x*0.021 + this.t*2.3)*3.2 + Math.sin(x*0.052 - this.t*3.45)*1.44;
+      x===0 ? c.moveTo(0,y) : c.lineTo(x,y);
+    }
+    c.stroke(); c.restore();
+
+    /* 기포 */
+    c.fillStyle=`hsla(${hue},100%,78%,.34)`;
+    this.bubbles.forEach(b=>{
+      const wob = Math.sin(this.t*3 + b.ph)*2.5;
+      c.beginPath(); c.arc(b.x+wob, b.y, b.r, 0, 6.2832); c.fill();
+    });
+  }
+
+  drawDrops(c){
+    const fs = this.fontPx();
+    const surY = this.surfaceY();
+    c.textBaseline='middle';
+
+    this.drops.forEach(d=>{
+      const sp = d.special ? SPECIALS[d.special] : null;
+      const danger = clamp((d.y + d.h/2) / Math.max(1, surY), 0, 1);
+      /* 특수 원소는 붉게 물드는 정도를 줄여 끝까지 알아보게 합니다 */
+      const k = Math.pow(danger, 2.4) * (sp ? 0.5 : 1);
+      const hue = hueWrap(lerp(d.hue, -10, k));
+      const sat = lerp(88, 96, k);
+      const sway = Math.sin(this.t*d.sway + d.seed) * 2.4;
+      const x = d.x + sway, y = d.y;
+
+      /* 낙하 꼬리 */
+      const tg=c.createLinearGradient(0,y-58,0,y);
+      tg.addColorStop(0,`hsla(${hue},100%,72%,0)`);
+      tg.addColorStop(1,`hsla(${hue},100%,72%,.55)`);
+      c.fillStyle=tg;
+      c.fillRect(x + d.w/2 - 1.5, y - 58, 3, 52);
+
+      /* 캡슐 */
+      c.save();
+      c.shadowBlur = 18 + k*16;
+      c.shadowColor = `hsla(${hue},100%,58%,${.45+k*.35})`;
+      rr(c, x, y-d.h/2, d.w, d.h, d.h/2);
+      const bg=c.createLinearGradient(x, y-d.h/2, x, y+d.h/2);
+      bg.addColorStop(0, `hsla(${hue},${sat}%,30%,.94)`);
+      bg.addColorStop(1, `hsla(${hue},${sat}%,15%,.96)`);
+      c.fillStyle=bg; c.fill();
+      c.shadowBlur=0;
+      c.strokeStyle=`hsla(${hue},100%,${lerp(66,72,k)}%,.85)`; c.lineWidth=1.5; c.stroke();
+
+      /* 상단 하이라이트 */
+      c.save(); c.clip();
+      const hg=c.createLinearGradient(x,y-d.h/2,x,y);
+      hg.addColorStop(0,'rgba(255,255,255,.22)'); hg.addColorStop(1,'rgba(255,255,255,0)');
+      c.fillStyle=hg; c.fillRect(x, y-d.h/2, d.w, d.h/2);
+      c.restore();
+      c.restore();
+
+      /* 원자번호 배지 */
+      const br = d.h*0.32, bx = x + d.h/2, by = y;
+      c.beginPath(); c.arc(bx,by,br,0,6.2832);
+      c.fillStyle=`hsla(${hue},100%,62%,.20)`; c.fill();
+      c.strokeStyle=`hsla(${hue},100%,70%,.60)`; c.lineWidth=1; c.stroke();
+      c.font = `${Math.round(fs*0.62)}px Jua, sans-serif`;
+      c.textAlign='center'; c.fillStyle=`hsla(${hue},100%,84%,.95)`;
+      c.fillText(d.atomic, bx, by+1);
+
+      /* 원소 이름 */
+      c.font = `${fs}px Jua, sans-serif`;
+      c.textAlign='left';
+      c.save();
+      c.shadowBlur=10; c.shadowColor=`hsla(${hue},100%,60%,.8)`;
+      c.fillStyle='#f2f8ff';
+      c.fillText(d.name, x + d.h/2 + br + 6, y+1);
+      c.restore();
+
+      /* ✨ 특수 원소 : 반짝이는 테두리 + 아이콘 */
+      if(sp){
+        const puls = 0.5 + Math.sin(this.t*6 + d.seed)*0.5;
+        c.save();
+        c.globalAlpha = 0.4 + puls*0.55;
+        c.strokeStyle = sp.color; c.lineWidth = 2.2;
+        c.shadowBlur = 12 + puls*20; c.shadowColor = sp.color;
+        rr(c, x-3, y-d.h/2-3, d.w+6, d.h+6, (d.h+6)/2);
+        c.stroke();
+        c.restore();
+
+        c.save();
+        c.font = `${Math.round(fs*0.92)}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+        c.textAlign='center';
+        c.shadowBlur = 12; c.shadowColor = sp.color;
+        c.fillText(sp.icon, x + d.w - d.h*0.46, y+1);
+        c.restore();
+      }
+    });
+  }
+
+  drawFX(c){
+    /* 충격파 링 */
+    this.rings.forEach(r=>{
+      c.save();
+      c.globalAlpha = clamp(r.life,0,1);
+      c.strokeStyle = r.color; c.lineWidth = (r.lw||3)*clamp(r.life,0,1);
+      c.shadowBlur=18; c.shadowColor=r.color;
+      c.beginPath(); c.arc(r.x,r.y,r.r,0,6.2832); c.stroke();
+      c.restore();
+    });
+
+    /* 파티클 */
+    this.particles.forEach(p=>{
+      c.globalAlpha = clamp(p.life,0,1);
+      c.fillStyle = p.color;
+      if(p.shape==='rect'){
+        c.save(); c.translate(p.x,p.y); c.rotate(p.life*5);
+        c.fillRect(-p.r,-p.r*0.4,p.r*2,p.r*0.8); c.restore();
+      }else{
+        c.beginPath(); c.arc(p.x,p.y,p.r,0,6.2832); c.fill();
+      }
+    });
+    c.globalAlpha=1;
+
+    /* 점수 팝업 */
+    c.textAlign='center'; c.textBaseline='middle';
+    this.pops.forEach(p=>{
+      c.save();
+      c.globalAlpha = clamp(p.life,0,1);
+      c.font = `${p.size}px Jua, sans-serif`;
+      c.shadowBlur=14; c.shadowColor=p.color;
+      c.fillStyle=p.color;
+      c.fillText(p.text, p.x, p.y);
+      c.restore();
+    });
+    c.globalAlpha=1; c.textAlign='left';
+  }
+
+  /* ❄️ 냉각 중에는 화면 가장자리에 옅은 서리를 깝니다 */
+  drawSlow(c,W,H){
+    if(this.slowTimer <= 0) return;
+    const fade = Math.min(1, this.slowTimer/1.2);      // 끝나기 직전 서서히 걷힘
+    const g = c.createRadialGradient(W/2,H/2,Math.min(W,H)*0.3, W/2,H/2,Math.max(W,H)*0.75);
+    g.addColorStop(0,'rgba(63,227,255,0)');
+    g.addColorStop(1,`rgba(63,227,255,${0.16*fade})`);
+    c.fillStyle=g; c.fillRect(0,0,W,H);
+  }
+
+  drawDanger(c,W,H){
+    if(this.acidity < 62) return;
+    const a = ((this.acidity-62)/38) * (0.20 + Math.sin(this.t*4)*0.09);
+    const g = c.createRadialGradient(W/2,H/2,Math.min(W,H)*0.25, W/2,H/2,Math.max(W,H)*0.72);
+    g.addColorStop(0,'rgba(255,40,80,0)');
+    g.addColorStop(1,`rgba(255,40,80,${clamp(a,0,.35)})`);
+    c.fillStyle=g; c.fillRect(0,0,W,H);
+  }
+
+  loop(time){
+    if(!this.isPlaying || this.paused) return;
+    /* 화면 크기를 못 잡은 채로 시작됐다면(탭 복귀·회전 직후) 여기서 되찾습니다 */
+    if(this.W < 80 || this.H < 80) this.resize();
+    const dt = Math.min(60, time - this.lastTime);
+    this.lastTime = time;
+    this.update(dt);
+    if(!this.isPlaying || this.paused) return;      // update 중에 끝났거나 멈췄으면 여기서 정리
+    this.draw();
+    this.animId = requestAnimationFrame(t=>this.loop(t));
+  }
+
+  /* ---------- 일시정지 ---------- */
+  pause(){
+    if(!this.isPlaying || this.paused) return;
+    this.paused = true;
+    cancelAnimationFrame(this.animId);
+    this.sound.stopBGM(0.25);
+    document.getElementById('pauseScore').textContent = this.score.toLocaleString();
+    document.getElementById('pauseLevel').textContent = this.level;
+    document.getElementById('pauseAcid').textContent  = Math.round(this.acidity) + '%';
+    document.getElementById('pauseModal').classList.remove('hidden');
+    this.input.blur();
+  }
+
+  resumeGame(){
+    if(!this.isPlaying || !this.paused) return;
+    this.paused = false;
+    document.getElementById('pauseModal').classList.add('hidden');
+    /* 멈춰 있던 시간만큼 원소가 쏟아지지 않도록 기준 시각을 다시 잡습니다 */
+    this.lastTime = performance.now();
+    if(this.sound.bgmOn) this.sound.startBGM();
+    this.animId = requestAnimationFrame(t=>this.loop(t));
+    setTimeout(()=>this.input.focus(), 60);
+  }
+
+  /* 게임을 접고 시작 화면으로 */
+  quit(){
+    this.isPlaying = false;
+    this.paused = false;
+    cancelAnimationFrame(this.animId);
+    this.sound.stopBGM(0.3);
+    document.getElementById('pauseModal').classList.add('hidden');
+    this.reset();
+    this.draw();
+  }
+
+  /* ---------- 이펙트 ---------- */
+  burstParticles(x,y,color,n=18,pow=1){
+    for(let i=0;i<n;i++){
+      const a=Math.random()*6.2832, sp=(40+Math.random()*190)*pow;
+      this.particles.push({
+        x,y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-40,
+        r:1+Math.random()*3.2, color, life:1, decay:1.2+Math.random()*0.9,
+        g:260, shape: Math.random()<0.3 ? 'rect':'dot'
+      });
+    }
+  }
+  addRing(x,y,max,color,lw){ this.rings.push({x,y,r:max*0.12,max,life:1,color,lw:lw||3}); }
+  addPop(x,y,text,color,size){ this.pops.push({x,y,text,color,size:size||18,vy:-46,life:1}); }
+
+  splash(d, surY){
+    this.sound.splash();
+    const cx = d.x + d.w/2;
+    this.burstParticles(cx, surY, 'rgba(255,110,140,.95)', 22, 1.15);
+    this.burstParticles(cx, surY, 'rgba(255,200,90,.9)', 8, 0.8);
+    this.addRing(cx, surY, Math.min(this.W*0.34,150), 'rgba(255,90,120,.9)', 3.5);
+    this.addPop(cx, surY-26, d.symbol, '#ff8fa3', 22);
+    this.shake = 13;
+  }
+
+  /* ---------- 정답 판정 ---------- */
+  checkAnswer(){
+    const raw = this.input.value.trim();
+    if(!raw || !this.isPlaying) return;
+    const val = raw.toLowerCase();
+
+    /* 화면에서 가장 아래(위험한) 것부터 제거 */
+    let idx = -1, best = -Infinity;
+    for(let i=0;i<this.drops.length;i++){
+      if(this.drops[i].symbol.toLowerCase() === val && this.drops[i].y > best){
+        best = this.drops[i].y; idx = i;
+      }
+    }
+
+    if(idx >= 0){
+      const d = this.drops[idx];
+      this.drops.splice(idx,1);
+      this.combo++; this.cleared++;
+      this.clearedSet.add(d.atomic);
+      this.maxCombo = Math.max(this.maxCombo, this.combo);
+
+      const bonus = Math.min(this.combo-1, 9) * 20;
+      let gain = 100 + bonus;
+      this.acidity = Math.max(0, this.acidity - 1.2);
+
+      const cx = d.x + d.w/2, cy = d.y;
+      const sp = d.special ? SPECIALS[d.special] : null;
+
+      if(sp){
+        /* ✨ 특수 원소 효과 */
+        if(d.special === 'gold'){
+          gain *= 3;
+          this.goldCount++;
+          this.addPop(cx, cy-52, '💎 황금 원소!', sp.color, 19);
+        }else if(d.special === 'neutral'){
+          this.acidity = Math.max(0, this.acidity - NEUTRALIZE);
+          this.addPop(cx, cy-52, `🧪 중화 −${NEUTRALIZE}%`, sp.color, 19);
+        }else{
+          this.slowTimer = SLOW_SEC;
+          this.showSlow();
+          this.addPop(cx, cy-52, `❄️ ${SLOW_SEC}초 감속`, sp.color, 19);
+        }
+        this.sound.power(d.special);
+        this.burstParticles(cx, cy, sp.color, 26, 1.25);
+        this.addRing(cx, cy, 108, sp.color, 4);
+        this.addRing(cx, cy, 168, 'rgba(255,255,255,.5)', 1.8);
+      }else{
+        this.sound.correct(this.combo-1);
+        this.burstParticles(cx, cy, `hsla(${d.hue},100%,70%,.95)`, 20, 1);
+        this.addRing(cx, cy, 78, `hsla(${d.hue},100%,70%,.9)`, 3);
+        this.addRing(cx, cy, 130, 'rgba(255,255,255,.55)', 1.6);
+      }
+      this.burstParticles(cx, cy, 'rgba(255,255,255,.9)', 7, 0.6);
+      this.addPop(cx, cy-24, `+${gain}`,
+                  sp ? sp.color : (bonus>0 ? '#ffc53d' : '#9bf06b'),
+                  sp ? 23 : (bonus>0 ? 21 : 18));
+
+      this.score += gain;
+      this.input.value='';
+      this.input.className='ok';
+      setTimeout(()=>this.input.className='', 220);
+      this.showCombo();
+      this.checkMilestone();
+      this.checkRecord();
+      this.updateHUD();
+    }else{
+      const lost = Math.min(50, this.score);
+      this.combo = 0; this.comboMark = 0; this.showCombo();
+      this.score -= lost;
+      this.sound.wrong();
+      if(lost > 0) this.addPop(this.W/2, this.surfaceY()-34, `-${lost}`, '#ff6b8b', 20);
+      this.input.className='';
+      void this.input.offsetWidth;
+      this.input.className='bad';
+      setTimeout(()=>this.input.className='', 400);
+      this.updateHUD();
+    }
+  }
+
+  /* 놓친 원소를 겹치지 않게 모아 둡니다 (게임 오버 복습용) */
+  noteMissed(d){
+    if(this.missedList.some(m=>m.atomic === d.atomic)) return;
+    if(this.missedList.length >= 15) return;
+    this.missedList.push({atomic:d.atomic, name:d.name, symbol:d.symbol});
+  }
+
+  /* 5·10·15·20·30 콤보에서 큰 배너 */
+  checkMilestone(){
+    const marks = [
+      [30,'👑 30 COMBO!!','#ff6b8b'],
+      [20,'🌟 20 COMBO!','#a78bfa'],
+      [15,'⚡ 15 COMBO!','#3fe3ff'],
+      [10,'💥 10 COMBO!','#ffc53d'],
+      [5, '🔥 5 COMBO!','#9bf06b']
+    ];
+    const hit = marks.find(m=>this.combo === m[0]);
+    if(!hit || this.comboMark >= hit[0]) return;
+    this.comboMark = hit[0];
+
+    const n = document.getElementById('comboNotice');
+    n.textContent = hit[1];
+    n.style.color = hit[2];
+    n.classList.add('show');
+    clearTimeout(this._comboT);
+    this._comboT = setTimeout(()=>n.classList.remove('show'), 1200);
+  }
+
+  /* 자기 최고 기록을 넘어선 순간 딱 한 번 */
+  checkRecord(){
+    if(this.newRecordHit || this.bestScore <= 0 || this.score <= this.bestScore) return;
+    this.newRecordHit = true;
+    this.sound.record();
+    const n = document.getElementById('levelUpNotice');
+    n.textContent = '🎉 신기록 갱신!';
+    n.classList.add('show');
+    clearTimeout(this._lvT);
+    this._lvT = setTimeout(()=>n.classList.remove('show'), 1600);
+  }
+
+  takeDamage(amount){
+    this.acidity = Math.min(100, this.acidity + amount);
+    const f = document.getElementById('damageFlash');
+    f.classList.remove('flash-on'); void f.offsetWidth; f.classList.add('flash-on');
+    this.updateHUD();
+    if(this.acidity >= 100) this.gameOver();
+  }
+
+  /* ⚠️ 오염도 85% 이상이면 화면 테두리와 배너로 알려 줍니다 */
+  setDanger(on){
+    const badge = document.getElementById('dangerBadge');
+    const stage = document.querySelector('.stage');
+    badge.classList.toggle('show', on);
+    stage.classList.toggle('danger', on);
+    if(on) badge.textContent = `⚠️ 위험! 오염도 ${Math.round(this.acidity)}%`;
+  }
+
+  /* ❄️ 냉각 남은 시간 표시 */
+  showSlow(){
+    const b = document.getElementById('slowBadge');
+    const on = this.slowTimer > 0;
+    b.classList.toggle('show', on);
+    if(on) b.textContent = `❄️ 냉각 중 ${this.slowTimer.toFixed(1)}초`;
+  }
+
+  levelUp(lv){
+    this.level = lv;
+    this.baseSpeed = this.difficulty.speed + (lv-1)*0.38;
+    this.spawnRate = Math.max(560, this.difficulty.spawn - (lv-1)*190);
+    this.sound.setIntensity(lv);
+    this.sound.levelUp();
+
+    const n = document.getElementById('levelUpNotice');
+    n.textContent = `🚀 LEVEL ${lv}`;
+    n.classList.add('show');
+    clearTimeout(this._lvT);
+    this._lvT = setTimeout(()=>n.classList.remove('show'), 1500);
+    this.updateHUD();
+  }
+
+  showCombo(){
+    const b = document.getElementById('comboBadge');
+    if(this.combo >= 2){
+      b.textContent = `COMBO ×${this.combo}`;
+      b.style.color = this.combo>=10 ? '#ff6b8b' : this.combo>=5 ? '#ffc53d' : '#9bf06b';
+      b.classList.add('show');
+    }else{
+      b.classList.remove('show');
+    }
+  }
+
+  updateTimer(){
+    const s = Math.floor(this.gameTime/1000);
+    const t = `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    document.getElementById('timerDisplay').textContent = t;
+    this._timeStr = t;
+  }
+
+  updateHUD(){
+    document.getElementById('scoreDisplay').textContent = this.score.toLocaleString();
+    document.getElementById('levelDisplay').textContent = this.level;
+
+    /* 이번 난이도의 자기 최고 기록 */
+    const bl = document.getElementById('bestLine');
+    if(this.bestScore > 0){
+      bl.hidden = false;
+      document.getElementById('bestDisplay').textContent =
+        Math.max(this.bestScore, this.score).toLocaleString();
+    }else{
+      bl.hidden = true;
+    }
+
+    const a = Math.round(this.acidity);
+    const bar = document.getElementById('acidBar'), txt = document.getElementById('acidText');
+    bar.style.width = a + '%';
+    txt.textContent = a + '%';
+    /* 위험 구간 진입 / 이탈 */
+    const danger = this.isPlaying && a >= 85;
+    this.setDanger(danger);
+    if(danger && !this.warned){ this.warned = true; this.sound.warn(); }
+    if(!danger) this.warned = false;
+
+    if(a > 70){
+      txt.style.color = '#ff6b8b';
+      bar.style.background = 'linear-gradient(90deg,#f43f5e,#ff6b8b)';
+      bar.style.boxShadow = '0 0 22px rgba(255,107,139,.65)';
+    }else if(a > 40){
+      txt.style.color = '#ffc53d';
+      bar.style.background = 'linear-gradient(90deg,#9bf06b,#ffc53d 60%,#fb923c)';
+      bar.style.boxShadow = '0 0 20px rgba(255,197,61,.5)';
+    }else{
+      txt.style.color = '#9bf06b';
+      bar.style.background = 'linear-gradient(90deg,#22d3a6,#9bf06b)';
+      bar.style.boxShadow = '0 0 18px rgba(155,240,107,.45)';
+    }
+  }
+
+  bindInput(){
+    /* 원소 기호 표기법(첫 글자 대문자, 나머지 소문자) 자동 보정 */
+    this.input.addEventListener('input', ()=>{
+      const v = this.input.value;
+      if(!v.length) return;
+      const fixed = v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
+      if(fixed === v) return;                       // 바뀐 게 없으면 손대지 않습니다
+      const pos = this.input.selectionStart;        // (건드리면 커서가 끝으로 튑니다)
+      this.input.value = fixed;
+      try{ this.input.setSelectionRange(pos, pos); }catch(e){}
+    });
+    document.getElementById('inputForm').addEventListener('submit', e=>{
+      e.preventDefault();
+      this.checkAnswer();
+      this.input.focus();
+    });
+
+    /* 엔터 직접 처리 — 모바일 키보드나 한글 입력기에서 폼 제출이
+       그냥 넘어가는 경우가 있어 확실하게 잡아 둡니다.
+       (한글 조합 중의 엔터는 글자를 확정하는 것이므로 건드리지 않습니다) */
+    this.input.addEventListener('keydown', e=>{
+      if(e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      this.checkAnswer();
+    });
+  }
+
+  gameOver(){
+    if(!this.isPlaying) return;
+    this.isPlaying = false;
+    this.paused = false;
+    cancelAnimationFrame(this.animId);
+    this.sound.stopBGM(1.0);
+    this.sound.gameOver();
+    this.slowTimer = 0; this.showSlow();
+    this.setDanger(false);
+
+    document.getElementById('finalScore').textContent   = this.score.toLocaleString();
+    document.getElementById('finalLevel').textContent   = this.level;
+    document.getElementById('finalTime').textContent    = this._timeStr || '00:00';
+    document.getElementById('finalCombo').textContent   = this.maxCombo;
+    document.getElementById('finalCleared').textContent = this.cleared;
+    document.getElementById('finalMissed').textContent  = this.missed;
+    document.getElementById('finalGold').textContent    = this.goldCount;
+    document.getElementById('finalDiff').textContent    = this.difficulty.label;
+
+    this.renderAchievements();
+    this.renderMissed();
+
+    try{ Ranking.prepareSave(this); }catch(err){ console.warn('rank prepare', err); }
+    setTimeout(()=>{
+      document.getElementById('gameOverModal').classList.remove('hidden');
+    }, 420);
+  }
+
+  /* 🏅 이번 판에서 딴 배지 */
+  renderAchievements(){
+    const a = [];
+    if(this.bestScore > 0 && this.score > this.bestScore) a.push('👑 신기록');
+    if(this.missed === 0 && this.cleared >= 5)            a.push('🎯 무결점');
+    if(this.maxCombo >= 20)      a.push('🌟 콤보 마스터');
+    else if(this.maxCombo >= 10) a.push('🔥 콤보왕');
+    if(this.cleared >= 40)      a.push('🧫 정화의 신');
+    else if(this.cleared >= 20) a.push('🧪 정화왕');
+    if(this.goldCount >= 3) a.push('💎 황금 사냥꾼');
+    if(this.level >= 6)      a.push('🚀 레벨 6 돌파');
+    else if(this.level >= 4) a.push('🛰️ 레벨 4 돌파');
+    if(this.clearedSet.size >= this.difficulty.pool.length) a.push('📖 도감 완주');
+
+    const row = document.getElementById('achRow');
+    row.innerHTML = a.map(t=>`<span class="ach">${t}</span>`).join('');
+  }
+
+  /* 📌 놓친 원소 복습 */
+  renderMissed(){
+    const box  = document.getElementById('missBox');
+    const grid = document.getElementById('missGrid');
+    if(!this.missedList.length){ box.hidden = true; return; }
+    box.hidden = false;
+    grid.innerHTML = this.missedList
+      .slice()
+      .sort((p,q)=>p.atomic - q.atomic)
+      .map(m=>`<span class="miss-chip"><b>${m.symbol}</b>${m.name}</span>`)
+      .join('');
+  }
+}
+
+/* ==========================================================================
+   랭킹 시스템 — 두 가지가 따로 있습니다
+
+     📱 기기 랭킹 : 지금 이 브라우저에만 쌓이는 기록 (인터넷 없이 동작)
+     🌐 전체 랭킹 : 점수를 등록하면 구글 Apps Script 를 거쳐
+                    선생님 구글 시트에 모이는 반 전체 기록
+
+   게임 HTML 자체는 깃허브에 그대로 올리면 되고,
+   점수를 저장하고 순위를 읽어 오는 일만 앱스크립트가 대신 해 줍니다.
+
+   ★ 전체 랭킹을 켜려면 바로 아래 endpoint 한 줄만 채우면 끝입니다.
+     만드는 방법 → 같은 폴더의 "전체랭킹_설치안내.txt" (5분)
+   ========================================================================== */
+const REMOTE = {
+
+  /* 🌐 전체 랭킹이 연결된 구글 Apps Script 웹앱 주소
+     (2026-08-22 배포 · 액세스 권한 "모든 사용자" 로 확인 완료)
+
+     ※ 앱스크립트 코드를 고친 뒤에는 [배포 → 배포 관리 → ✏️ → 새 버전] 으로
+       올리세요. 그러면 이 주소는 그대로 두어도 됩니다.
+       [새 배포] 로 만들면 주소가 바뀌므로 아래를 다시 적어야 합니다.
+     ※ 전체 랭킹을 잠시 끄고 싶으면 ''  (빈 따옴표) 로 두면 됩니다.        */
+  endpoint : 'https://script.google.com/macros/s/AKfycbzk4PQCAn-VduIQRUcPMz1fz4ke8NVY8_xkueGUqSV5wC0fIYxeGh5FwSZPOc8N7aMfxQ/exec',
+
+  top      : 20,           // 전체 랭킹에 보여 줄 인원 수
+  timeout  : 15000         // 응답 대기 시간(ms). 앱스크립트는 첫 호출이 느릴 수 있습니다.
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   [방법 C] 설문지(폼)로 랭킹 모으기 — 둘 다 완전 무료, 서버 코딩 필요 없음
+   자세한 설정법은 같은 폴더의 "랭킹시스템_구축_가이드.txt" 를 보세요.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* [방법 E] 오프라인 CSV 랭킹 도구(가져오기/내보내기) 표시 여부
+   구글 설문지(C-1)로 랭킹을 모으기로 했다면 false 로 두세요.
+   나중에 다시 쓰고 싶으면 true 로만 바꾸면 버튼이 되살아납니다. */
+const CSV_TOOLS = false;
+
+const FORMS = {
+
+  /* ── C-1. 구글 설문지 : 자동 전송 (학생이 아무것도 안 눌러도 됨) ──
+     구글 설문지 → 미리 채우기 링크에서 entry.숫자 를 확인해 아래에 적으세요.
+     사용하지 않는 항목은 '' 로 비워 두면 전송하지 않습니다.            */
+  google: {
+    enabled: false,
+    action : '',   // 예: https://docs.google.com/forms/d/e/1FAIpQL....../formResponse
+    entry  : {
+      name      : '',   // 예: 'entry.1234567890'
+      score     : '',
+      level     : '',
+      time      : '',
+      combo     : '',
+      difficulty: '',
+      classId   : ''
+    }
+  },
+
+  /* ── C-2. 마이크로소프트 폼 : 값이 미리 채워진 폼이 열리고
+              학생이 [제출]만 한 번 누름 (학교 M365 계정용) ──
+     미리 채우기 링크를 만들 때 각 칸에 아래 낱말을 그대로 입력해 두세요.
+        이름칸 → 이름자리   점수칸 → 점수자리   난이도칸 → 난이도자리
+        레벨칸 → 레벨자리   시간칸 → 시간자리   콤보칸 → 콤보자리      */
+  ms: {
+    enabled: false,
+    url    : ''    // 위 방식으로 만든 "미리 채우기 링크" 전체를 붙여넣기
+  }
+};
+
+/* file:// 이나 시크릿 모드처럼 localStorage 가 막힌 환경에서도
+   오류 없이 동작하도록 감싸는 저장소 (막히면 메모리에만 보관) */
+const Store = {
+  mem:{}, blocked:false,
+  get(k){
+    try{
+      const v = localStorage.getItem(k);
+      if(v !== null) return v;
+    }catch(e){ this.blocked = true; }
+    return (k in this.mem) ? this.mem[k] : null;
+  },
+  set(k,v){
+    this.mem[k] = v;
+    try{ localStorage.setItem(k,v); }catch(e){ this.blocked = true; }
+  },
+  del(k){
+    delete this.mem[k];
+    try{ localStorage.removeItem(k); }catch(e){ this.blocked = true; }
+  }
+};
+
+/* ==========================================================================
+   🌐 전체 랭킹 창구 (구글 Apps Script 웹앱)
+
+   깃허브에 올린 HTML 은 "정적 파일"이라 점수를 보관할 곳이 없습니다.
+   그래서 저장·집계하는 일만 구글 Apps Script 에 맡깁니다.
+
+   주고받는 방식은 <script> 태그를 쓰는 JSONP 입니다.
+   깃허브 페이지 · 학교 크롬북 · 파일 직접 열기(file://) 어디서 열어도
+   CORS 오류 없이 그대로 동작하는 것이 이 방식의 장점입니다.
+   ========================================================================== */
+const Cloud = {
+  /* 저장소 이름은 V2 그대로 둡니다 — 학생들이 이미 쌓아 둔
+     📱 기기 랭킹과 소리 설정을 V3 에서도 그대로 이어 쓰기 위해서입니다. */
+  URLKEY:'acidrain_v2_endpoint',   // 화면에서 직접 넣어 본 주소 (이 기기에만 보관)
+  cache :{},                        // {난이도:{t:받아온시각, list:[...]}}
+  FRESH : 20000,                    // 20초 안에 받아 온 목록은 그대로 다시 사용
+
+  /* 실제로 쓸 웹앱 주소 — 형식이 맞을 때만 인정합니다.
+     파일에 적어 둔 주소(REMOTE.endpoint)가 언제나 우선입니다.
+     기기에 저장된 주소는 파일이 비어 있을 때만 쓰는 예비용입니다.
+     (예전에 시험 삼아 넣어 둔 주소가 배포한 주소를 덮어쓰면 안 되니까요) */
+  url(){
+    const u = String(REMOTE.endpoint || Store.get(this.URLKEY) || '').trim();
+    return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(u) ? u : '';
+  },
+  ready(){ return !!this.url(); },
+
+  /* JSONP 호출 : 주소를 <script src> 로 불러오면 답이 함수로 되돌아옵니다 */
+  call(params){
+    return new Promise((resolve, reject)=>{
+      const base = this.url();
+      if(!base) return reject(new Error('NO_ENDPOINT'));
+
+      const cb = '__rank_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+      const qs = new URLSearchParams(Object.assign({}, params, {callback:cb, _:Date.now()}));
+      const s  = document.createElement('script');
+      let done = false;
+
+      const finish = (fn, arg)=>{
+        if(done) return;
+        done = true;
+        clearTimeout(timer);
+        try{ delete window[cb]; }catch(e){ window[cb] = undefined; }
+        if(s.parentNode) s.parentNode.removeChild(s);
+        fn(arg);
+      };
+      const timer = setTimeout(()=>finish(reject, new Error('TIMEOUT')), REMOTE.timeout || 15000);
+
+      window[cb] = data => finish(resolve, data);
+      s.onerror  = ()   => finish(reject, new Error('NETWORK'));
+      s.src = base + (base.indexOf('?') < 0 ? '?' : '&') + qs.toString();
+      document.head.appendChild(s);
+    });
+  },
+
+  /* 점수 한 건 저장 → 저장된 순위를 돌려받습니다
+     ★ 밖으로 나가는 정보는 닉네임 · 레벨 · 점수 · 플레이시간 · 최대콤보 뿐입니다.
+       (어느 난이도였는지와 기록한 날짜는 시트에서 자동으로 붙습니다) */
+  save(e){
+    return this.call({
+      action:'save', diff:e.diff, name:e.name,
+      level:e.level, score:e.score, time:e.time, combo:e.combo
+    });
+  },
+
+  /* 난이도별 상위 기록 불러오기 */
+  list(diff){
+    return this.call({action:'list', diff, limit:REMOTE.top || 20});
+  },
+
+  /* JSONP 가 막힌 환경을 위한 보험 : 답은 못 읽지만 저장은 되는 방식 */
+  blindPost(e){
+    const base = this.url();
+    if(!base) return;
+    try{
+      fetch(base, {
+        method:'POST', mode:'no-cors',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify({
+          action:'save', diff:e.diff, name:e.name,
+          level:e.level, score:e.score, time:e.time, combo:e.combo
+        })
+      }).catch(()=>{});
+    }catch(err){}
+  }
+};
+
+const Ranking = {
+  KEY:'acidrain_v2_rank',
+  NAMEKEY:'acidrain_v2_lastname',
+  pending:null,
+  viewDiff:'easy',
+  scope:'local',      // 'local' = 📱 기기 랭킹, 'global' = 🌐 전체 랭킹
+  globalRows:{},      // 난이도별로 마지막에 받아 온 전체 랭킹 (CSV 내보내기용)
+
+  load(){
+    try{ return JSON.parse(Store.get(this.KEY)) || {easy:[],normal:[],hard:[]}; }
+    catch(e){ return {easy:[],normal:[],hard:[]}; }
+  },
+  save(data){ Store.set(this.KEY, JSON.stringify(data)); },
+  KEEP:50,   // 기기에 보관하는 기록 수 (학급 CSV 병합용으로 넉넉히)
+  SHOW:20,   // 랭킹 화면에 보여 주는 순위 수
+
+  top(diff, n){ return (this.load()[diff] || []).slice(0, n || this.SHOW); },
+
+  /* 이 기기에 남아 있는 난이도별 최고 점수 (0 = 기록 없음) */
+  best(diff){ const t = this.top(diff, 1)[0]; return t ? Number(t.score) || 0 : 0; },
+
+  add(diff, entry){
+    const data = this.load();
+    if(!data[diff]) data[diff]=[];
+    data[diff].push(entry);
+    data[diff].sort((a,b)=>b.score-a.score);
+    data[diff] = data[diff].slice(0, this.KEEP);
+    this.save(data);
+    return data[diff].findIndex(e=>e.id===entry.id);
+  },
+
+  /* 같은 기록인지 판별 (CSV 병합 시 중복 제거용) */
+  sig(e){ return [e.name, e.score, e.level, e.time, e.combo, e.date].join('|'); },
+
+  prepareSave(game){
+    this.pending = {
+      id: Date.now()+'-'+Math.random().toString(36).slice(2,7),
+      diff: game.difficulty.key,
+      diffLabel: game.difficulty.label,
+      name: '',
+      score: game.score,
+      level: game.level,
+      time: game._timeStr || '00:00',
+      combo: game.maxCombo,
+      cleared: game.cleared,
+      date: new Date().toLocaleDateString('ko-KR')
+    };
+    const best = this.top(game.difficulty.key)[0];
+    const isNew = game.score > 0 && (!best || game.score > best.score);
+    document.getElementById('newRecord').classList.toggle('show', isNew);
+
+    const ni = document.getElementById('nameInput');
+    ni.value = Store.get(this.NAMEKEY) || '';
+    ni.disabled = false;
+    const sb = document.getElementById('saveScoreBtn');
+    sb.disabled = false; sb.textContent = '등록'; sb.style.opacity = 1;
+
+    document.getElementById('formSubmitBtn').style.display =
+      (FORMS.ms.enabled && FORMS.ms.url) ? '' : 'none';
+
+    const st = document.getElementById('saveStatus');
+    st.className = 'save-status';
+    st.innerHTML = Cloud.ready()
+      ? '반 친구들이 모두 보는 이름이에요. 고운 말로 지어 주세요. 🙂<br>' +
+        '등록하면 🌐 전체 랭킹에도 함께 올라갑니다.'
+      : '반 친구들이 모두 보는 이름이에요. 고운 말로 지어 주세요. 🙂';
+  },
+
+  /* 🚫 닉네임 규칙 확인 — 여기에는 "규칙"만 두고 "금칙어 목록"은 두지 않습니다.
+     이 HTML 은 깃허브에 공개되므로, 목록을 적어 두면 학생이 소스를 열어
+     그대로 읽을 수 있습니다. 낱말 검사는 선생님만 보는 앱스크립트에서 합니다. */
+  checkName(raw){
+    const t = String(raw || '').trim();
+    if(!t) return '';                                     // 비워 두면 '익명의 과학자'
+    if(/[\u3131-\u318E]/.test(t))
+      return '자음·모음 낱자(ㅋ, ㅅ, ㅠ 같은)는 쓸 수 없어요. 글자로 적어 주세요.';
+    if(!/[\uAC00-\uD7A3a-z]/i.test(t))
+      return '글자가 들어간 닉네임으로 적어 주세요.';
+    if(/(.)\1{3,}/.test(t))
+      return '같은 글자를 너무 여러 번 썼어요. 다른 닉네임으로 바꿔 주세요.';
+    return '';
+  },
+
+  /* 닉네임을 다시 받아야 할 때 — 입력창을 열고 이유를 알려 줍니다 */
+  nameError(msg){
+    const st = document.getElementById('saveStatus');
+    const ni = document.getElementById('nameInput');
+    const sb = document.getElementById('saveScoreBtn');
+    st.className = 'save-status warn';
+    st.innerHTML = '🚫 ' + this.esc(msg);
+    ni.disabled = false;
+    ni.classList.remove('bad'); void ni.offsetWidth; ni.classList.add('bad');
+    setTimeout(()=>ni.classList.remove('bad'), 1200);
+    sb.textContent = '등록'; sb.disabled = false; sb.style.opacity = 1;
+    try{ sound.wrong(); }catch(e){}
+    setTimeout(()=>{ ni.focus(); ni.select(); }, 60);
+  },
+
+  /* 앱스크립트가 닉네임을 거절했을 때, 기기 랭킹에 들어간 기록도 도로 뺍니다 */
+  undo(rec){
+    const data = this.load();
+    ['easy','normal','hard'].forEach(k=>{
+      data[k] = (data[k] || []).filter(e => e.id !== rec.id);
+    });
+    this.save(data);
+    this.pending = rec;                                   // 다시 등록할 수 있게 되돌립니다
+    try{ refreshBestLabels(); }catch(e){}
+    if(this.scope === 'local') this.render(this.viewDiff);
+  },
+
+  commit(){
+    if(!this.pending) return;
+    const ni = document.getElementById('nameInput');
+    const raw = (ni.value || '').trim();
+
+    /* 규칙에 어긋나면 아무 데도 저장하지 않고 다시 받습니다 */
+    const 문제 = this.checkName(raw);
+    if(문제){ this.nameError(문제); return; }
+
+    const name = raw || '익명의 과학자';
+    this.pending.name = name;
+    Store.set(this.NAMEKEY, name);
+
+    this.lastRecord = this.pending;
+    this.add(this.pending.diff, this.pending);
+    try{ refreshBestLabels(); }catch(e){}
+    this.submitGoogleForm(this.pending);
+    this.submitCloud(this.pending);          // 🌐 앱스크립트로 전송
+
+    const sb = document.getElementById('saveScoreBtn');
+    sb.textContent = '✅ 완료';
+    sb.disabled = true; sb.style.opacity = .65;
+    ni.disabled = true;
+    this.pending = null;
+  },
+
+  /* 🌐 전체 랭킹 전송 — 결과(현재 순위)를 화면에 그대로 알려 줍니다 */
+  submitCloud(entry){
+    const st = document.getElementById('saveStatus');
+    if(!st) return;
+
+    if(!Cloud.ready()){
+      st.className = 'save-status';
+      st.innerHTML = '📱 이 기기의 랭킹에 저장했습니다.';
+      return;
+    }
+
+    const rec = Object.assign({}, entry);
+    st.className = 'save-status';
+    st.innerHTML = '<span class="mini-spin"></span>🌐 전체 랭킹에 올리는 중…';
+
+    Cloud.save(rec).then(res=>{
+      /* 🚫 선생님이 정해 둔 금칙어에 걸린 경우 — 기기 랭킹에서도 빼고 다시 받습니다 */
+      if(res && res.reason === 'nickname'){
+        this.undo(rec);
+        this.nameError(res.error || '다른 닉네임으로 바꿔 주세요.');
+        return;
+      }
+      if(!res || res.ok !== true) throw new Error((res && res.error) || 'BAD_REPLY');
+      Cloud.cache = {};                       // 새 기록이 생겼으니 목록을 다시 받도록
+      st.className = 'save-status ok';
+      const pos = res.rank
+        ? ' · 현재 <b>' + res.rank + '위</b>' + (res.total ? ' / ' + res.total + '명' : '')
+        : '';
+      st.innerHTML = '✅ 전체 랭킹 등록 완료' + pos +
+                     '<button class="link-btn" id="goGlobalBtn">랭킹 보기</button>';
+      const go = document.getElementById('goGlobalBtn');
+      if(go) go.addEventListener('click', ()=>{ openRankModal('global', rec.diff); sound.ui(); });
+    }).catch(err=>{
+      Cloud.blindPost(rec);                   // 보험 : 답 없이 저장만이라도 시도
+      st.className = 'save-status warn';
+      const why = (err && err.message) || '';
+      st.innerHTML =
+        (why === 'TIMEOUT'
+           ? '⚠️ 전체 랭킹 서버가 제때 답하지 않았어요.'
+           : (why && why !== 'NETWORK' && why !== 'BAD_REPLY' && why !== 'NO_ENDPOINT'
+               ? '⚠️ ' + this.esc(why)
+               : '⚠️ 전체 랭킹 전송에 실패했어요.')) +
+        '<br>📱 이 기기에는 저장되었습니다.' +
+        '<button class="link-btn" id="retryCloudBtn">다시 시도</button>';
+      const rt = document.getElementById('retryCloudBtn');
+      if(rt) rt.addEventListener('click', ()=>{ this.submitCloud(rec); sound.ui(); });
+    });
+  },
+
+  /* 📱 기기 랭킹 / 🌐 전체 랭킹 화면 전환 */
+  setScope(scope){
+    this.scope = (scope === 'global') ? 'global' : 'local';
+    document.querySelectorAll('#rankScope .scope-btn').forEach(b=>
+      b.classList.toggle('active', b.dataset.scope === this.scope));
+    document.getElementById('localPane').hidden  = (this.scope !== 'local');
+    document.getElementById('globalPane').hidden = (this.scope !== 'global');
+    if(this.scope === 'global') this.renderGlobal(this.viewDiff);
+    else                        this.render(this.viewDiff);
+  },
+
+  /* [C-1] 구글 설문지로 자동 전송 (응답은 읽지 않는 no-cors 방식) */
+  submitGoogleForm(entry){
+    const g = FORMS.google;
+    if(!g.enabled || !g.action) return;
+    try{
+      const val = {
+        name:entry.name, score:entry.score, level:entry.level, time:entry.time,
+        combo:entry.combo, difficulty:entry.diffLabel, classId:''
+      };
+      const body = new URLSearchParams();
+      Object.keys(g.entry).forEach(k=>{
+        if(g.entry[k]) body.append(g.entry[k], val[k] == null ? '' : String(val[k]));
+      });
+      fetch(g.action, {
+        method:'POST', mode:'no-cors',
+        headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+        body: body.toString()
+      }).catch(()=>{});
+    }catch(e){ console.warn('google form', e); }
+  },
+
+  /* [C-2] 값이 채워진 마이크로소프트 폼 열기 (학생이 [제출] 한 번) */
+  openMsForm(){
+    const m = FORMS.ms;
+    if(!m.enabled || !m.url) return;
+    const e = this.lastRecord || {};
+    const url = m.url
+      .replace(/이름자리/g,   encodeURIComponent(e.name  || '익명'))
+      .replace(/점수자리/g,   encodeURIComponent(e.score ?? 0))
+      .replace(/레벨자리/g,   encodeURIComponent(e.level ?? 1))
+      .replace(/시간자리/g,   encodeURIComponent(e.time  || '00:00'))
+      .replace(/콤보자리/g,   encodeURIComponent(e.combo ?? 0))
+      .replace(/난이도자리/g, encodeURIComponent(e.diffLabel || ''));
+    window.open(url, '_blank', 'noopener');
+  },
+
+  /* [E] CSV 가져오기 : 학생들이 내보낸 CSV 여러 개를 한 번에 병합 */
+  async importCSV(files){
+    if(!files || !files.length) return;
+    const data = this.load();
+    const seen = {};
+    ['easy','normal','hard'].forEach(k=>{
+      data[k] = data[k] || [];
+      data[k].forEach(e=> seen[this.sig(e)] = true);
+    });
+
+    let added = 0, dup = 0, skip = 0;
+    for(const f of files){
+      let text;
+      try{ text = await this.readText(f); }catch(e){ skip++; continue; }
+      const rows = this.parseCSV(text);
+      if(rows.length < 2){ skip++; continue; }
+
+      const head = rows[0].map(h=>String(h).trim());
+      const col = n => head.indexOf(n);
+      const iD = col('난이도'), iN = col('이름'), iS = col('점수');
+      if(iD < 0 || iN < 0 || iS < 0){ skip++; continue; }
+      const iL = col('레벨'), iT = col('플레이시간'), iC = col('최대콤보'),
+            iX = col('정화한원소'), iY = col('날짜');
+
+      rows.slice(1).forEach(r=>{
+        const key = this.diffKey(r[iD]);
+        const score = parseInt(String(r[iS]).replace(/[^0-9-]/g,''), 10);
+        if(!key || isNaN(score)) return;
+        const rec = {
+          id: 'imp-' + Math.random().toString(36).slice(2,9),
+          diff: key, diffLabel: DIFFICULTIES[key].label,
+          name: String(r[iN] || '익명').trim() || '익명',
+          score,
+          level  : iL>=0 ? (parseInt(r[iL],10) || 1) : 1,
+          time   : iT>=0 ? String(r[iT] || '00:00') : '00:00',
+          combo  : iC>=0 ? (parseInt(r[iC],10) || 0) : 0,
+          cleared: iX>=0 ? (parseInt(r[iX],10) || 0) : 0,
+          date   : iY>=0 ? String(r[iY] || '') : ''
+        };
+        const sg = this.sig(rec);
+        if(seen[sg]){ dup++; return; }
+        seen[sg] = true;
+        data[key].push(rec);
+        added++;
+      });
+    }
+
+    ['easy','normal','hard'].forEach(k=>{
+      data[k].sort((a,b)=>b.score-a.score);
+      data[k] = data[k].slice(0, this.KEEP);
+    });
+    this.save(data);
+    this.render(this.viewDiff);
+
+    alert(`CSV 가져오기 완료\n\n` +
+          `· 새로 추가된 기록 : ${added}개\n` +
+          `· 중복으로 건너뜀 : ${dup}개` +
+          (skip ? `\n· 읽지 못한 파일 : ${skip}개` : ''));
+  },
+
+  /* 엑셀이 CP949(ANSI)로 저장했을 때도 읽히도록 인코딩 자동 판별 */
+  async readText(file){
+    const buf = await file.arrayBuffer();
+    let t = new TextDecoder('utf-8').decode(buf);
+    if(t.indexOf('\uFFFD') >= 0){
+      try{ t = new TextDecoder('euc-kr').decode(buf); }catch(e){}
+    }
+    return t.replace(/^\uFEFF/, '');
+  },
+
+  parseCSV(text){
+    const rows = []; let row = [], cur = '', q = false;
+    for(let i=0;i<text.length;i++){
+      const ch = text[i];
+      if(q){
+        if(ch === '"'){ if(text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+        else cur += ch;
+      }else{
+        if(ch === '"') q = true;
+        else if(ch === ',') { row.push(cur); cur = ''; }
+        else if(ch === '\r') { /* 무시 */ }
+        else if(ch === '\n') { row.push(cur); rows.push(row); row = []; cur = ''; }
+        else cur += ch;
+      }
+    }
+    if(cur !== '' || row.length){ row.push(cur); rows.push(row); }
+    return rows.filter(r=> r.some(v=>String(v).trim() !== ''));
+  },
+
+  /* '표준 · 1~30번', '표준', 'normal' 무엇으로 적혀 있어도 인식 */
+  diffKey(label){
+    const t = String(label || '').trim();
+    if(DIFFICULTIES[t]) return t;
+    const keys = Object.keys(DIFFICULTIES);
+    let k = keys.find(k=>DIFFICULTIES[k].label === t);
+    if(k) return k;
+    k = keys.find(k=>DIFFICULTIES[k].short === t);
+    if(k) return k;
+    k = keys.find(k=>t.indexOf(DIFFICULTIES[k].short) === 0);
+    return k || null;
+  },
+
+  render(diff){
+    this.viewDiff = diff;
+    const list = this.top(diff);
+    const box = document.getElementById('rankList');
+    if(!list.length){
+      box.innerHTML = '<div class="rank-empty">아직 기록이 없습니다.<br>첫 번째 기록의 주인공이 되어보세요! 🧪</div>';
+      return;
+    }
+    box.innerHTML = list.map((e,i)=>`
+      <div class="rank-row">
+        <div class="rank-no">${i<3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
+        <div class="rank-info">
+          <div class="rank-name">${this.esc(e.name)}</div>
+          <div class="rank-meta">LV.${e.level} · ${e.time} · 콤보 ${e.combo} · ${e.date}</div>
+        </div>
+        <div class="rank-score">${Number(e.score).toLocaleString()}</div>
+      </div>`).join('');
+  },
+
+  /* 🌐 전체 랭킹 화면 — 앱스크립트에서 받아 온 기록을 보여 줍니다 */
+  renderGlobal(diff, force){
+    this.viewDiff = diff;
+    const box   = document.getElementById('globalList');
+    const note  = document.getElementById('globalNote');
+    const tools = document.getElementById('globalTools');
+    if(!box) return;
+
+    /* ① 아직 앱스크립트 주소를 넣지 않은 상태 → 설정 안내를 대신 보여 줍니다 */
+    if(!Cloud.ready()){
+      tools.style.display = 'none';
+      note.innerHTML = '설정을 마치면 반 친구들의 기록이 이 화면에 모입니다.';
+      box.innerHTML =
+        '<div class="setup-box">' +
+          '🌐 <b>전체 랭킹</b>은 점수를 구글 시트 한곳에 모아 줍니다.' +
+          '<ol>' +
+            '<li>구글 드라이브에서 <b>스프레드시트</b>를 하나 만듭니다.</li>' +
+            '<li>메뉴의 <b>확장 프로그램 → Apps Script</b> 를 열고, 같은 폴더에 있는 ' +
+                '<code>앱스크립트_전체랭킹.gs</code> 내용을 통째로 붙여넣습니다.</li>' +
+            '<li><b>배포 → 새 배포 → 웹 앱</b> 을 고르고, 액세스 권한을 ' +
+                '<code>모든 사용자</code> 로 두고 배포합니다.</li>' +
+            '<li>나온 주소(<code>…/exec</code>)를 아래 칸에 붙여넣으세요.</li>' +
+          '</ol>' +
+          '<div style="font-size:10.5px;color:#7f92b5;line-height:1.75;margin-bottom:9px">' +
+            '모이는 정보는 <b style="color:#8ba0c6">닉네임 · 레벨 · 점수 · 시간 · 콤보</b> 뿐입니다.</div>' +
+          '<div class="setup-row">' +
+            '<input type="url" id="endpointInput" spellcheck="false" autocomplete="off" ' +
+                   'placeholder="https://script.google.com/macros/s/……/exec">' +
+            '<button class="btn btn-primary" id="endpointSaveBtn">연결</button>' +
+          '</div>' +
+          '<div style="font-size:10.5px;color:#57668a;margin-top:8px;line-height:1.75">' +
+            '여기서 넣은 주소는 <b style="color:#8ba0c6">이 기기에만</b> 저장됩니다. ' +
+            '학생들 화면에서도 되게 하려면 HTML 안의 <code>REMOTE.endpoint</code> 에 적어서 올리세요.' +
+          '</div>' +
+        '</div>';
+
+      const inp = document.getElementById('endpointInput');
+      const apply = ()=>{
+        const v = (inp.value || '').trim();
+        if(!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(v)){
+          alert('앱스크립트 웹앱 주소 형식이 아닙니다.\n\nhttps://script.google.com/macros/s/……/exec\n\n마지막이 /exec 로 끝나는지 확인해 주세요.');
+          inp.focus();
+          return;
+        }
+        Store.set(Cloud.URLKEY, v);
+        Cloud.cache = {};
+        markGlobalReady();
+        this.renderGlobal(this.viewDiff, true);
+      };
+      document.getElementById('endpointSaveBtn').addEventListener('click', apply);
+      inp.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); apply(); } });
+      return;
+    }
+
+    /* ② 연결된 상태 */
+    tools.style.display = '';
+    note.innerHTML = '반 전체가 함께 보는 랭킹입니다. 게임이 끝나고 닉네임을 등록하면 올라갑니다.<br>' +
+                     '모이는 정보는 <b style="color:#8ba0c6">닉네임 · 레벨 · 점수 · 시간 · 콤보</b> 뿐입니다.';
+
+    const cached = Cloud.cache[diff];
+    if(cached && !force && (Date.now() - cached.t) < Cloud.FRESH){ this.paintGlobal(cached.list); return; }
+    if(cached) this.paintGlobal(cached.list);          // 옛 목록을 먼저 보여 주고 조용히 갱신
+    else box.innerHTML = '<div class="rank-state"><span class="spin"></span><br><br>기록을 불러오는 중…</div>';
+
+    const want = diff;
+    Cloud.list(diff).then(res=>{
+      if(this.scope !== 'global' || this.viewDiff !== want) return;   // 그새 화면이 바뀌었으면 무시
+      if(!res || res.ok !== true) throw new Error((res && res.error) || 'BAD_REPLY');
+      const list = res.list || [];
+      Cloud.cache[diff]    = {t:Date.now(), list};
+      this.globalRows[diff] = list;
+      this.paintGlobal(list);
+    }).catch(err=>{
+      if(this.scope !== 'global' || this.viewDiff !== want) return;
+      if(Cloud.cache[diff]) return;                                   // 이미 옛 목록이 떠 있으면 그대로 둠
+      const why = (err && err.message) || '';
+      box.innerHTML = '<div class="rank-state">' +
+        (why === 'TIMEOUT'
+          ? '⏳ 랭킹 서버가 답하지 않습니다.<br>인터넷 연결을 확인하고 <b>새로고침</b>을 눌러 주세요.'
+          : (why && why !== 'NETWORK' && why !== 'BAD_REPLY' && why !== 'NO_ENDPOINT'
+              ? '⚠️ ' + this.esc(why)
+              : '⚠️ 전체 랭킹을 불러오지 못했습니다.<br>앱스크립트를 <b>새 배포</b>했는지, ' +
+                '액세스 권한이 <b>모든 사용자</b>인지 확인해 주세요.')) +
+        '</div>';
+    });
+  },
+
+  paintGlobal(list){
+    const box = document.getElementById('globalList');
+    if(!list || !list.length){
+      box.innerHTML = '<div class="rank-empty">아직 올라온 기록이 없습니다.<br>첫 번째 기록의 주인공이 되어보세요! 🌐</div>';
+      return;
+    }
+    const me = (Store.get(this.NAMEKEY) || '').trim();
+    box.innerHTML = list.map((e,i)=>`
+      <div class="rank-row${me && e.name === me ? ' me' : ''}">
+        <div class="rank-no">${i<3 ? ['🥇','🥈','🥉'][i] : i+1}</div>
+        <div class="rank-info">
+          <div class="rank-name">${this.esc(e.name)}</div>
+          <div class="rank-meta">${this.metaLine(e)}</div>
+        </div>
+        <div class="rank-score">${Number(e.score || 0).toLocaleString()}</div>
+      </div>`).join('');
+  },
+
+  /* 전체 랭킹 한 줄의 설명글 — 시트에 있는 것만 이어 붙입니다.
+     (예전에 쌓인 기록은 시간·콤보 칸이 비어 있어서 그냥 건너뜁니다) */
+  metaLine(e){
+    const bits = ['LV.' + this.esc(e.level || 1)];
+    if(e.time)                                bits.push(this.esc(e.time));
+    if(e.combo !== null && e.combo !== undefined && e.combo !== '')
+                                              bits.push('콤보 ' + this.esc(e.combo));
+    if(e.date)                                bits.push(this.esc(e.date));
+    return bits.join(' · ');
+  },
+
+  esc(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); },
+
+  /* 📱 기기 랭킹 CSV 내보내기 */
+  exportCSV(){
+    const data = this.load();
+    const rows = [['난이도','순위','이름','점수','레벨','플레이시간','최대콤보','정화한원소','날짜']];
+    ['easy','normal','hard'].forEach(k=>{
+      (data[k]||[]).forEach((e,i)=>rows.push([
+        DIFFICULTIES[k].label, i+1, e.name, e.score, e.level, e.time, e.combo, e.cleared||'', e.date
+      ]));
+    });
+    if(rows.length === 1){ alert('내보낼 기록이 없습니다.'); return; }
+    this.downloadCSV(rows, `원소산성비_기기랭킹_${new Date().toISOString().slice(0,10)}.csv`);
+  },
+
+  /* 🌐 전체 랭킹 CSV 내보내기 — 화면에 불러온 난이도만 담깁니다 */
+  exportGlobalCSV(){
+    const rows = [['난이도','순위','닉네임','레벨','점수','플레이시간','최대콤보','날짜']];
+    ['easy','normal','hard'].forEach(k=>{
+      (this.globalRows[k] || []).forEach((e,i)=>rows.push([
+        DIFFICULTIES[k].label, i+1, e.name, e.level||'', e.score,
+        e.time || '', (e.combo == null ? '' : e.combo), e.date || ''
+      ]));
+    });
+    if(rows.length === 1){
+      alert('먼저 전체 랭킹을 불러온 뒤에 내려받을 수 있습니다.\n(기초 · 표준 · 심화 탭을 한 번씩 눌러 주세요)');
+      return;
+    }
+    this.downloadCSV(rows, `원소산성비_전체랭킹_${new Date().toISOString().slice(0,10)}.csv`);
+  },
+
+  /* 엑셀에서 한글이 깨지지 않도록 BOM 을 붙여 저장 */
+  downloadCSV(rows, filename){
+    const csv = '﻿' + rows.map(r=>r.map(v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1500);
+  }
+};
+
+/* ==========================================================================
+   원소 도감 (계열별 색상)
+   ========================================================================== */
+const CATEGORY = [
+  {name:'비활성 기체', c:'#3fe3ff', list:[2,10,18]},
+  {name:'할로젠',      c:'#ff6b8b', list:[9,17,35,53]},
+  {name:'알칼리 금속', c:'#ffc53d', list:[3,11,19]},
+  {name:'알칼리 토금속',c:'#fb923c', list:[4,12,20,38,56]},
+  {name:'전이 금속',   c:'#a78bfa', list:[21,22,23,24,25,26,27,28,29,30,47,48,78,79,80]},
+  {name:'준금속',      c:'#5eead4', list:[5,14]},
+  {name:'그 밖의 금속',c:'#7dd3fc', list:[13,50,82]},
+  {name:'비금속',      c:'#9bf06b', list:[1,6,7,8,15,16]}
+];
+function catColor(atomic){
+  const c = CATEGORY.find(g=>g.list.includes(atomic));
+  return c ? c.c : '#8ba0c6';
+}
+function renderElements(diffKey){
+  const pool = DIFFICULTIES[diffKey].pool;
+  document.getElementById('elGrid').innerHTML = pool.map(e=>{
+    const c = catColor(e.atomic);
+    return `<div class="el-tile" style="--tc:${c};--tg:${c}22">
+      <div class="el-no">${e.atomic}</div>
+      <div class="el-sym">${e.symbol}</div>
+      <div class="el-nm">${e.name}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ==========================================================================
+   부팅 & UI 연결
+   ========================================================================== */
+const sound = new SoundEngine();
+let game;
+
+/* 배경 부유 분자 */
+(function(){
+  const box = document.getElementById('bgMolecules');
+  const shapes = ['⬡','⬢','⌬','⚛','◌','⎔'];
+  for(let i=0;i<16;i++){
+    const d = document.createElement('div');
+    d.className='molecule';
+    d.textContent = shapes[Math.floor(Math.random()*shapes.length)];
+    d.style.left = Math.random()*100 + '%';
+    d.style.fontSize = (2 + Math.random()*4.5) + 'rem';
+    d.style.animationDuration = (16 + Math.random()*22) + 's';
+    d.style.animationDelay = (-Math.random()*20) + 's';
+    box.appendChild(d);
+  }
+})();
+
+const VOL_KEY = {bgm:'acidrain_v2_bgmvol', sfx:'acidrain_v2_sfxvol'};
+
+function updateSoundUI(){
+  [['bgm', sound.bgmVol], ['sfx', sound.sfxVol]].forEach(([k, v])=>{
+    const on = v > 0, steps = Math.round(v*5);
+
+    const row = document.getElementById(k+'Row');
+    if(row) row.classList.toggle('muted', !on);
+
+    const bar = document.getElementById(k+'Bar');
+    if(bar) Array.from(bar.children).forEach((seg,i)=> seg.classList.toggle('on', i < steps));
+
+    const pct = document.getElementById(k+'Pct');
+    if(pct) pct.textContent = Math.round(v*100) + '%';
+
+    document.querySelectorAll(`[data-vol="${k}-"]`).forEach(b=> b.disabled = (v <= 0));
+    document.querySelectorAll(`[data-vol="${k}+"]`).forEach(b=> b.disabled = (v >= 1));
+  });
+
+  const ico = [
+    ['bgmToggleStart', sound.bgmOn, '🎵', '🎵'],
+    ['bgmToggleGame' , sound.bgmOn, '🎵', '🎵'],
+    ['sfxToggleStart', sound.sfxOn, '🔊', '🔇'],
+    ['sfxToggleGame' , sound.sfxOn, '🔊', '🔇']
+  ];
+  ico.forEach(([id, on, a, b])=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.classList.toggle('off', !on);
+    el.textContent = on ? a : b;
+  });
+}
+
+/* 볼륨 적용 + 저장 */
+function applyVol(kind, v){
+  sound.init(); sound.resume();
+  if(kind === 'bgm'){
+    sound.setBgmVol(v);
+    if(sound.bgmVol > 0) sound.startBGM(); else sound.stopBGM(0.35);
+  }else{
+    sound.setSfxVol(v);
+  }
+  Store.set(VOL_KEY[kind], String(Math.round((kind==='bgm'?sound.bgmVol:sound.sfxVol)*100)));
+  updateSoundUI();
+  if(kind === 'sfx' && sound.sfxVol > 0) sound.ui();
+}
+
+/* ＋ / － 버튼 (시작화면·게임화면 공통) */
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-vol]');
+  if(!btn || btn.disabled) return;
+  const kind = btn.dataset.vol.slice(0,3);
+  const dir  = btn.dataset.vol.slice(3) === '+' ? 1 : -1;
+  const cur  = kind === 'bgm' ? sound.bgmVol : sound.sfxVol;
+  applyVol(kind, cur + dir*0.2);
 });
 
-document.getElementById('restartBtn').addEventListener('click', () => {
-    document.getElementById('gameOverModal').classList.add('hidden');
-    document.getElementById('gameOverModal').classList.remove('flex');
-    game.reset();
-    game.start();
+/* 아이콘 클릭 = 음소거 / 해제 (직전 볼륨으로 복구) */
+function toggleBGM(){ applyVol('bgm', sound.bgmVol > 0 ? 0 : (sound.bgmPrev || 0.6)); }
+function toggleSFX(){ applyVol('sfx', sound.sfxVol > 0 ? 0 : (sound.sfxPrev || 0.8)); }
+['bgmToggleStart','bgmToggleGame'].forEach(id=>
+  document.getElementById(id).addEventListener('click', toggleBGM));
+['sfxToggleStart','sfxToggleGame'].forEach(id=>
+  document.getElementById(id).addEventListener('click', toggleSFX));
+
+/* 첫 사용자 입력 시 오디오 활성화 + 시작화면 BGM */
+function primeAudio(){
+  sound.init(); sound.resume();
+  if(sound.bgmOn) sound.startBGM();
+  window.removeEventListener('pointerdown', primeAudio);
+  window.removeEventListener('keydown', primeAudio);
+}
+window.addEventListener('pointerdown', primeAudio);
+window.addEventListener('keydown', primeAudio);
+
+/* 난이도 선택 */
+let selectedDiff = 'normal';
+document.querySelectorAll('.diff-card').forEach(card=>{
+  card.addEventListener('click', ()=>{
+    document.querySelectorAll('.diff-card').forEach(c=>c.classList.remove('active'));
+    card.classList.add('active');
+    selectedDiff = card.dataset.diff;
+    game.setDifficulty(selectedDiff);
+    sound.ui();
+  });
+});
+document.getElementById('cntEasy').textContent   = DIFFICULTIES.easy.pool.length + '종';
+document.getElementById('cntNormal').textContent = DIFFICULTIES.normal.pool.length + '종';
+document.getElementById('cntHard').textContent   = DIFFICULTIES.hard.pool.length + '종';
+
+/* 난이도별 최고 기록을 시작 화면 카드에 표시 */
+function refreshBestLabels(){
+  [['easy','bestEasy'],['normal','bestNormal'],['hard','bestHard']].forEach(([k,id])=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const b = Ranking.best(k);
+    el.textContent = b > 0 ? 'BEST ' + b.toLocaleString() : '';
+    el.hidden = b <= 0;                       // 기록이 없으면 카드를 넓히지 않도록 숨김
+  });
+}
+
+/* 시작 화면으로 돌아가기 */
+function goHome(){
+  document.getElementById('gameOverModal').classList.add('hidden');
+  document.getElementById('pauseModal').classList.add('hidden');
+  document.getElementById('startModal').classList.remove('hidden');
+  game.quit();
+  refreshBestLabels();
+}
+
+/* 시작 / 재시작 / 홈 */
+function beginGame(){
+  document.getElementById('startModal').classList.add('hidden');
+  document.getElementById('gameOverModal').classList.add('hidden');
+  document.getElementById('pauseModal').classList.add('hidden');
+  game.setDifficulty(selectedDiff);
+  game.start();
+}
+document.getElementById('startBtn').addEventListener('click', beginGame);
+document.getElementById('restartBtn').addEventListener('click', beginGame);
+document.getElementById('homeBtn').addEventListener('click', ()=>{ goHome(); sound.ui(); });
+
+/* 일시정지 */
+document.getElementById('pauseBtn').addEventListener('click', ()=>{
+  if(game.paused) game.resumeGame(); else game.pause();
+  sound.ui();
+});
+document.getElementById('resumeBtn').addEventListener('click', ()=>{ game.resumeGame(); sound.ui(); });
+document.getElementById('quitBtn').addEventListener('click', ()=>{ goHome(); sound.ui(); });
+
+/* 원소 공부 */
+document.getElementById('studyBtn').addEventListener('click', ()=>{
+  document.querySelectorAll('#studyTabs .tab').forEach(t=>
+    t.classList.toggle('active', t.dataset.diff === selectedDiff));
+  renderElements(selectedDiff);
+  document.getElementById('studyModal').classList.remove('hidden');
+  sound.ui();
+});
+document.getElementById('closeStudyBtn').addEventListener('click', ()=>{
+  document.getElementById('studyModal').classList.add('hidden'); sound.ui();
+});
+document.querySelectorAll('#studyTabs .tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('#studyTabs .tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    renderElements(t.dataset.diff);
+    sound.ui();
+  });
 });
 
-document.getElementById('homeBtn').addEventListener('click', () => {
-    document.getElementById('gameOverModal').classList.add('hidden');
-    document.getElementById('gameOverModal').classList.remove('flex');
-    document.getElementById('startModal').classList.remove('hidden');
-    game.reset();
-    game.isPlaying = false;
+/* ── 랭킹 : 📱 기기 랭킹 · 🌐 전체 랭킹 ─────────────────────────────── */
+
+/* 랭킹 창을 연다 (scope 를 지정하면 그 칸으로 바로 들어갑니다) */
+function openRankModal(scope, diff){
+  const d = diff || selectedDiff;
+  document.querySelectorAll('#rankTabs .tab').forEach(t=>
+    t.classList.toggle('active', t.dataset.diff === d));
+  Ranking.viewDiff = d;
+  Ranking.setScope(scope || Ranking.scope || 'local');
+  document.getElementById('rankModal').classList.remove('hidden');
+}
+
+/* 전체 랭킹이 연결돼 있으면 버튼에 초록 점을 켭니다 */
+function markGlobalReady(){
+  const g = document.querySelector('#rankScope .scope-btn[data-scope="global"]');
+  if(g && Cloud.ready() && !g.querySelector('.dot')){
+    g.insertAdjacentHTML('beforeend', '<span class="dot"></span>');
+  }
+}
+
+document.getElementById('rankBtn').addEventListener('click', ()=>{
+  openRankModal(Ranking.scope, selectedDiff); sound.ui();
 });
+document.getElementById('closeRankBtn').addEventListener('click', ()=>{
+  document.getElementById('rankModal').classList.add('hidden'); sound.ui();
+});
+document.querySelectorAll('#rankScope .scope-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{ Ranking.setScope(b.dataset.scope); sound.ui(); });
+});
+document.querySelectorAll('#rankTabs .tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('#rankTabs .tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    if(Ranking.scope === 'global') Ranking.renderGlobal(t.dataset.diff);
+    else                           Ranking.render(t.dataset.diff);
+    sound.ui();
+  });
+});
+
+/* 🌐 전체 랭킹 : 새로고침 · CSV 내려받기 */
+document.getElementById('refreshGlobalBtn').addEventListener('click', ()=>{
+  Cloud.cache = {};
+  Ranking.renderGlobal(Ranking.viewDiff, true);
+  sound.ui();
+});
+document.getElementById('globalCsvBtn').addEventListener('click', ()=>Ranking.exportGlobalCSV());
+
+/* 📱 기기 랭킹 : CSV 도구 표시 여부 + 안내문 */
+(function(){
+  const note = document.getElementById('rankNote');
+  if(!CSV_TOOLS){
+    ['importRankBtn','exportRankBtn'].forEach(id=>{
+      document.getElementById(id).style.display = 'none';
+    });
+    document.getElementById('clearRankBtn').style.flex = '1';
+  }
+  if(FORMS.google.enabled && FORMS.google.action){
+    note.innerHTML = '이 기기(브라우저)에만 저장되는 랭킹입니다.<br>' +
+                     '등록한 기록은 <b style="color:#9bf06b">구글 설문지</b>로도 함께 전송됩니다.';
+  }else if(CSV_TOOLS){
+    note.innerHTML = '이 기기(브라우저)에만 저장되는 랭킹입니다.<br>' +
+                     '학생들이 내보낸 CSV를 <b style="color:#8ba0c6">가져오기</b>로 합치면 학급 랭킹이 됩니다.';
+  }else{
+    note.innerHTML = '이 기기(브라우저)에만 저장되는 랭킹입니다.<br>' +
+                     '반 친구들과 겨루려면 위쪽 <b style="color:#8ba0c6">🌐 전체 랭킹</b> 을 눌러 보세요.';
+  }
+  markGlobalReady();
+})();
+
+document.getElementById('exportRankBtn').addEventListener('click', ()=>Ranking.exportCSV());
+document.getElementById('importRankBtn').addEventListener('click', ()=>{
+  document.getElementById('rankFileInput').click(); sound.ui();
+});
+document.getElementById('rankFileInput').addEventListener('change', function(){
+  Ranking.importCSV(Array.from(this.files));
+  this.value = '';
+});
+document.getElementById('clearRankBtn').addEventListener('click', ()=>{
+  if(confirm('저장된 랭킹 기록을 모두 삭제할까요?')){
+    Store.del(Ranking.KEY);
+    Ranking.render(Ranking.viewDiff);
+  }
+});
+
+/* 점수 등록 */
+document.getElementById('saveScoreBtn').addEventListener('click', ()=>{ Ranking.commit(); sound.correct(2); });
+document.getElementById('formSubmitBtn').addEventListener('click', ()=>{
+  if(Ranking.pending) Ranking.commit();      // 아직 등록 전이면 먼저 저장
+  Ranking.openMsForm(); sound.ui();
+});
+document.getElementById('nameInput').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); Ranking.commit(); sound.correct(2); }
+});
+
+/* 결과 카드 저장 */
+document.getElementById('captureBtn').addEventListener('click', async function(){
+  const btn = this, orig = btn.innerHTML;
+  try{
+    btn.innerHTML = '⏳';
+    const canvas = await html2canvas(document.getElementById('resultCard'), {
+      backgroundColor:'#080c1a', scale:2, logging:false
+    });
+    const a = document.createElement('a');
+    a.download = `원소산성비_${game.score}점.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    btn.innerHTML = '✅';
+  }catch(err){ console.error(err); btn.innerHTML = '❌'; }
+  setTimeout(()=>btn.innerHTML = orig, 1800);
+});
+
+/* ESC : 열려 있는 창을 닫고, 게임 중이면 일시정지 */
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Escape') return;
+  const study = document.getElementById('studyModal');
+  const rank  = document.getElementById('rankModal');
+  const open  = !study.classList.contains('hidden') || !rank.classList.contains('hidden');
+  if(open){
+    study.classList.add('hidden');
+    rank.classList.add('hidden');
+    return;
+  }
+  if(game && game.isPlaying){
+    if(game.paused) game.resumeGame(); else game.pause();
+  }
+});
+
+/* 폰트 로드 후 시작 (캔버스 텍스트 폭 측정 정확도) */
+function boot(){
+  /* 지난번에 맞춰 둔 볼륨 복원 */
+  const bv = Store.get(VOL_KEY.bgm), sv = Store.get(VOL_KEY.sfx);
+  if(bv !== null && !isNaN(parseInt(bv,10))) sound.setBgmVol(parseInt(bv,10)/100);
+  if(sv !== null && !isNaN(parseInt(sv,10))) sound.setSfxVol(parseInt(sv,10)/100);
+
+  game = new AcidRainGame(sound);
+  game.setDifficulty(selectedDiff);
+  refreshBestLabels();
+  updateSoundUI();
+  game.draw();
+}
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(boot).catch(boot);
+}else{
+  window.addEventListener('load', boot);
+}
 </script>
 </body>
 </html>
