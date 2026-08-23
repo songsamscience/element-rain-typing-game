@@ -408,7 +408,15 @@ footer{font-size:10px;color:#4b5c7d;z-index:5;flex-shrink:0;text-align:center}
 .scope-btn .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:5px;
   background:var(--lime);box-shadow:0 0 8px var(--lime);vertical-align:middle}
 
-/* ---------- 랭킹 : 🔤 기호 / 가 이름 전환 ---------- */
+/* ---------- 랭킹 : 입력 방식 전환 ----------
+   'A' 와 '가' 는 한글 입력기의 표시를 그대로 가져온 것입니다.
+   글자가 아니라 아이콘으로 읽히도록 작은 칩 모양으로 감쌉니다. */
+.ko-chip{display:inline-block;font-family:'Jua',sans-serif;font-size:.84em;line-height:1;
+  padding:2px 6px 3px;margin-right:3px;border-radius:6px;vertical-align:middle;
+  background:rgba(167,139,250,.22);border:1px solid rgba(167,139,250,.55);color:#cbb8ff}
+.ko-chip.en{background:rgba(63,227,255,.2);border-color:rgba(63,227,255,.5);color:#a9e9ff}
+.mode-btn.active .ko-chip{background:rgba(255,255,255,.24);border-color:rgba(255,255,255,.55);color:#fff}
+
 .mode-switch{display:flex;gap:4px;padding:3px;margin-bottom:10px;border-radius:999px;
   background:rgba(6,11,26,.6);border:1px solid var(--stroke)}
 .mode-btn{flex:1;font-family:'Jua',sans-serif;font-size:11.5px;padding:7px 6px;border-radius:999px;
@@ -896,10 +904,10 @@ footer a:hover{color:#9bb6e0;text-decoration:underline}
       <button class="scope-btn" data-scope="global">🌐 전체 랭킹</button>
     </div>
 
-    <!-- 🔤 원소 기호 입력 / 가 원소 이름 입력 : 순위를 따로 매깁니다 -->
+    <!-- 「원소 기호 입력」 / 「원소 이름 입력」 : 순위를 따로 매깁니다 -->
     <div class="mode-switch" id="rankMode">
-      <button class="mode-btn active" data-mode="symbol">🔤 기호 입력</button>
-      <button class="mode-btn" data-mode="name">가 이름 입력</button>
+      <button class="mode-btn active" data-mode="symbol"><span class="ko-chip en">A</span>기호 입력</button>
+      <button class="mode-btn" data-mode="name"><span class="ko-chip">가</span>이름 입력</button>
     </div>
 
     <div class="tabs" id="rankTabs">
@@ -1040,8 +1048,8 @@ const DIFFICULTIES = {
 };
 
 /* 입력 방식 -----------------------------------------------------------------
-   🔤 기호 입력 : 캡슐에 "수소"가 떨어지면 → H 라고 칩니다  (V3 까지의 방식)
-   가 이름 입력 : 캡슐에 "H"가 떨어지면   → 수소 라고 칩니다
+   원소 기호 입력 : 캡슐에 "수소"가 떨어지면 → H 라고 칩니다  (V3 까지의 방식)
+   원소 이름 입력 : 캡슐에 "H"가 떨어지면   → 수소 라고 칩니다
 
    이름 입력은 한글을 여러 글자 쳐야 해서 손이 더 갑니다.
    그래서 낙하 속도를 조금 늦추고 나오는 간격을 조금 벌려 두었습니다.
@@ -1062,7 +1070,7 @@ function nameAnswers(name){
 
 const MODES = {
   symbol: {
-    key:'symbol', emoji:'🔤', short:'기호', label:'원소 기호 입력',
+    key:'symbol', short:'기호', label:'원소 기호 입력',
     sub:'떨어지는 원소를 기호로 정화하세요',
     ph:'원소 기호 입력 (예: Na)', maxlen:4,
     speedK:1, spawnK:1,
@@ -1073,7 +1081,7 @@ const MODES = {
     norm   : v  => v.trim().toLowerCase()
   },
   name: {
-    key:'name', emoji:'가', short:'이름', label:'원소 이름 입력',
+    key:'name', short:'이름', label:'원소 이름 입력',
     sub:'떨어지는 기호를 이름으로 정화하세요',
     ph:'원소 이름 입력 (예: 나트륨)', maxlen:12,
     speedK:0.9, spawnK:1.2,
@@ -1470,7 +1478,7 @@ class AcidRainGame{
 
   updateBadge(){
     document.getElementById('diffBadge').textContent =
-      `${this.difficulty.emoji} ${this.difficulty.short} · ${this.mode.emoji} ${this.mode.short}`;
+      `${this.difficulty.emoji} ${this.difficulty.short} · ${this.mode.short} 입력`;
   }
 
   reset(){
@@ -2645,7 +2653,7 @@ const Ranking = {
         (why === 'TIMEOUT'
            ? '⚠️ 전체 랭킹 서버가 제때 답하지 않았어요.'
            : why === 'OLD_SCRIPT'
-           ? '⚠️ 전체 랭킹 서버가 아직 <b>가 이름 입력</b> 순위를 모릅니다.<br>같은 폴더의 <b>앱스크립트_전체랭킹.gs</b> 를 다시 붙여넣고 [배포 → 배포 관리 → ✏️ → 새 버전] 으로 올려 주세요.'
+           ? '⚠️ 전체 랭킹 서버가 아직 <b>원소 이름 입력</b> 순위를 모릅니다.<br>같은 폴더의 <b>앱스크립트_전체랭킹.gs</b> 를 다시 붙여넣고 [배포 → 배포 관리 → ✏️ → 새 버전] 으로 올려 주세요.'
            : (why && why !== 'NETWORK' && why !== 'BAD_REPLY' && why !== 'NO_ENDPOINT'
                ? '⚠️ ' + this.esc(why)
                : '⚠️ 전체 랭킹 전송에 실패했어요.')) +
@@ -2667,7 +2675,7 @@ const Ranking = {
     else                        this.render(this.viewDiff, this.viewMode);
   },
 
-  /* 🔤 원소 기호 입력 / 가 원소 이름 입력 순위 전환 */
+  /* 「원소 기호 입력」 / 「원소 이름 입력」 순위 전환 */
   setMode(mode){
     this.viewMode = (mode === 'name') ? 'name' : 'symbol';
     document.querySelectorAll('#rankMode .mode-btn').forEach(b=>
@@ -2735,7 +2743,7 @@ const Ranking = {
       if(iD < 0 || iN < 0 || iS < 0){ skip++; continue; }
       const iL = col('레벨'), iT = col('플레이시간'), iC = col('최대콤보'),
             iX = col('정화한원소'), iY = col('날짜');
-      /* 입력 방식 칸이 없는 예전 CSV 는 모두 🔤 기호 입력으로 봅니다 */
+      /* 입력 방식 칸이 없는 예전 CSV 는 모두 원소 기호 입력으로 봅니다 */
       const iM = col('입력방식') >= 0 ? col('입력방식') : col('입력모드');
 
       rows.slice(1).forEach(r=>{
@@ -2933,7 +2941,7 @@ const Ranking = {
         (why === 'TIMEOUT'
           ? '⏳ 랭킹 서버가 답하지 않습니다.<br>인터넷 연결을 확인하고 <b>새로고침</b>을 눌러 주세요.'
           : why === 'OLD_SCRIPT'
-          ? '⚠️ 전체 랭킹 서버가 아직 <b>가 이름 입력</b> 순위를 모릅니다.<br>같은 폴더의 <b>앱스크립트_전체랭킹.gs</b> 를 다시 붙여넣고 [배포 → 배포 관리 → ✏️ → 새 버전] 으로 올려 주세요.'
+          ? '⚠️ 전체 랭킹 서버가 아직 <b>원소 이름 입력</b> 순위를 모릅니다.<br>같은 폴더의 <b>앱스크립트_전체랭킹.gs</b> 를 다시 붙여넣고 [배포 → 배포 관리 → ✏️ → 새 버전] 으로 올려 주세요.'
           : (why && why !== 'NETWORK' && why !== 'BAD_REPLY' && why !== 'NO_ENDPOINT'
               ? '⚠️ ' + this.esc(why)
               : '⚠️ 전체 랭킹을 불러오지 못했습니다.<br>앱스크립트를 <b>새 배포</b>했는지, ' +
@@ -3199,7 +3207,7 @@ function primeAudio(){
 window.addEventListener('pointerdown', primeAudio);
 window.addEventListener('keydown', primeAudio);
 
-/* 입력 방식 선택 (🔤 원소 기호 / 가 원소 이름) */
+/* 입력 방식 선택 (원소 기호 입력 / 원소 이름 입력) */
 let selectedMode = 'symbol';
 
 /* 고른 방식에 맞추어 【📝 게임 방법】 을 다시 적어 줍니다 */
@@ -3388,7 +3396,7 @@ document.getElementById('rankFileInput').addEventListener('change', function(){
   this.value = '';
 });
 document.getElementById('clearRankBtn').addEventListener('click', ()=>{
-  if(confirm('이 기기에 저장된 랭킹 기록을 모두 삭제할까요?\n(🔤 기호 입력 · 가 이름 입력 기록이 함께 지워집니다)')){
+  if(confirm('이 기기에 저장된 랭킹 기록을 모두 삭제할까요?\n(원소 기호 입력 · 원소 이름 입력 기록이 함께 지워집니다)')){
     Store.del(Ranking.KEY);
     Ranking.render(Ranking.viewDiff, Ranking.viewMode);
     refreshBestLabels();
