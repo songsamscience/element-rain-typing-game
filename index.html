@@ -29,7 +29,7 @@
 
 <style>
 /* ============================================================
-   원소 산성비 게임 V4  |  Design System
+   원소 산성비 게임 V5  |  Design System
    Font : Jua(배달의민족 주아) / Gowun Dodum(고운돋움)
    ============================================================ */
 *,*::before,*::after{box-sizing:border-box}
@@ -480,6 +480,9 @@ footer{font-size:10px;color:#4b5c7d;z-index:5;flex-shrink:0;text-align:center}
     radial-gradient(ellipse at 50% -10%,rgba(225,29,72,.28),rgba(225,29,72,0) 60%),
     linear-gradient(165deg,rgba(20,28,56,.98),rgba(7,11,26,.99))!important}
 .capshot,.capshot *{animation:none!important;transition:none!important}
+/* 📷 저장할 때만 '놓친 원소' 상자가 카드 안으로 들어옵니다 (화면에서는 카드 밖에 그대로 둡니다) */
+.capshot .miss-box{margin-top:13px;background:rgba(10,17,36,.88)}
+.capshot .miss-box[hidden]{display:none!important}
 
 .go-title{font-family:'Jua',sans-serif;font-size:clamp(30px,9vw,42px);text-align:center;color:#ff6b8b;
   text-shadow:0 0 30px rgba(255,107,139,.6);position:relative;line-height:1.1}
@@ -657,7 +660,7 @@ footer a:hover{color:#9bb6e0;text-decoration:underline}
   <div class="brand">
     <div class="brand-row">
       <span class="logo">ACID RAIN</span>
-      <span class="chip-v">V4</span>
+      <span class="chip-v">V5</span>
     </div>
     <div class="brand-row">
       <span class="brand-sub" id="brandSub">떨어지는 원소를 기호로 정화하세요</span>
@@ -3422,16 +3425,29 @@ document.getElementById('nameInput').addEventListener('keydown', e=>{
   if(e.key === 'Enter'){ e.preventDefault(); Ranking.commit(); sound.correct(2); }
 });
 
-/* 결과 카드 저장 */
+/* 결과 카드 저장 — 📌 놓친 원소 기호 목록까지 한 장에 담습니다.
+   화면에서는 '놓친 원소' 상자가 결과 카드 바깥(아래)에 있지만,
+   저장용 사본에서만 카드 안쪽 맨 아래(만든이 줄 바로 위)로 옮겨 붙입니다. */
 document.getElementById('captureBtn').addEventListener('click', async function(){
   const btn = this, orig = btn.innerHTML;
+  const missOnScreen = document.getElementById('missBox');
+  const withMiss = !!missOnScreen && !missOnScreen.hidden;   /* 다 잡았으면 붙일 것이 없습니다 */
   try{
     btn.innerHTML = '⏳';
     const canvas = await html2canvas(document.getElementById('resultCard'), {
       backgroundColor:'#080c1a', scale:2, logging:false,
       onclone:(doc)=>{                    /* 화면은 그대로 두고 사본에만 저장용 규칙 */
         const c = doc.getElementById('resultCard');
-        if(c) c.classList.add('capshot');
+        if(!c) return;
+        c.classList.add('capshot');
+
+        if(!withMiss) return;
+        const m    = doc.getElementById('missBox');
+        const foot = c.querySelector('.result-foot');
+        if(!m) return;
+        m.hidden = false;
+        if(foot) c.insertBefore(m, foot);   /* 만든이 줄 바로 위에 끼워 넣습니다 */
+        else     c.appendChild(m);
       }
     });
 
