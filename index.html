@@ -1445,23 +1445,38 @@ const lerp  = (a,b,t)=>a+(b-a)*t;
 const hueWrap = h => ((h % 360) + 360) % 360;
 
 /* ==========================================================================
-   🤖 매크로(자동 입력) 방지
+   🤖 매크로(자동 입력) 방지  ·  V6.1
 
    ▸ 무엇을 잡을 수 있나
      ① 코드로 답을 집어넣는 방식 (개발자 도구 · 확장 프로그램 · 북마클릿)
         → 사람이 자판을 누르면 반드시 키 이벤트가 생깁니다.
           글자를 한 번도 누르지 않았는데 답이 들어오면 사람이 아닙니다.
         → 스크립트가 만들어 낸 가짜 키 이벤트는 isTrusted 가 false 입니다.
+          (크롬은 이 값을 이벤트마다 못 고치게 박아 두므로 위조할 수 없습니다)
      ② 자판을 대신 눌러 주는 매크로 프로그램 (오토핫키 같은 것)
-        → 가짜 키 이벤트는 아니지만, 사람이 낼 수 없는 속도로 답하고
+        → 가짜 키 이벤트는 아니지만 사람이 낼 수 없는 속도로 답하고
           간격이 시계처럼 일정합니다. 그 두 가지를 봅니다.
+        → 손놀림도 봅니다. 사람은 글자와 글자 사이가 최소 수십 ms 벌어지고
+          그 간격이 매번 흔들립니다. 기계는 0 ms 이거나 늘 똑같습니다.
      ③ 점수를 직접 고치는 방식 (game.score = 999999)
-        → 점수를 따로 한 번 더 세어 두고 끝날 때 맞춰 봅니다.
-          정화한 원소 수보다 많은 점수도 나올 수 없습니다.
+        → 점수·정화 수를 따로 세어 두고 끝날 때 맞춰 봅니다.
+          그 값들은 아래 괄호 안(클로저)에 숨겨 두어 밖에서 못 고칩니다.
+
+   ▸ V6.1 에서 손본 곳 — 실제로 매크로를 만들어 시험해 보고 고쳤습니다
+     · 설정과 벌점을 밖에서 못 만지게 괄호 안으로 감췄습니다.
+       (예전에는 ANTI_MACRO.on = false 한 줄이면 검사가 통째로 꺼졌습니다)
+     · 키를 세는 일을 게임이 대신 불러 주지 않고 Guard 가 스스로 듣습니다.
+       (예전에는 Guard.note({}) 를 직접 불러 "키 쳤다"고 속일 수 있었습니다)
+     · 검산용 값(expect·spawned)을 숨겨, 앞뒤를 맞춰 놓고 점수만 바꾸는
+       수법을 막았습니다. 부르는 차례가 어긋나도 잡습니다.
+     · 시간에 견주어 떨어질 수 있는 원소 수를 넘으면 조작으로 봅니다.
+       (앱스크립트에서 쓰는 식과 같습니다)
+     · 손놀림(글자 치는 간격) 검사를 새로 넣었습니다.
 
    ▸ 못 잡는 것 — 솔직하게 적어 둡니다
      이 게임은 HTML 한 장이라 소스가 학생에게도 그대로 보입니다.
-     아래 숫자를 읽고 그 사이를 노려 맞추는 학생까지는 막지 못합니다.
+     아래 숫자를 읽고 그 사이를 노려, 사람처럼 들쭉날쭉하게 답하도록
+     매크로를 짜는 학생까지는 막지 못합니다.
      그래서 앱스크립트(서버) 쪽에서도 한 번 더 거르고,
      선생님이 【🤖 의심 기록 찾기】로 확인해 지우실 수 있게 해 두었습니다.
 
@@ -1469,120 +1484,210 @@ const hueWrap = h => ((h % 360) + 360) % 360;
      macro  → 📱 기기 랭킹에는 남기고 🌐 전체 랭킹에는 올리지 않습니다.
      tamper → 점수 자체가 맞지 않으므로 어디에도 저장하지 않습니다.
    ========================================================================== */
-const ANTI_MACRO = {
-  on          : true,   // false 로 두면 검사를 모두 끕니다
-  minGap      : 150,    // 정답과 정답 사이 최소 간격(ms) — 사람은 이보다 빠를 수 없습니다
-  evenGapSD   : 32,     // 간격이 이만큼도 흔들리지 않으면 기계로 봅니다(ms)
-  evenGapMean : 1200,   // (평균 간격이 이보다 짧을 때만 따집니다)
-  evenGapN    : 8,      // 규칙성을 따지기 시작하는 표본 수
-  strikeMax   : 5,      // 벌점이 이만큼 쌓이면 자동 입력으로 판정
-  blockGlobal : true,   // 판정되면 🌐 전체 랭킹 등록을 막습니다
-  warnInGame  : true    // 게임 중에 한 번 알려 줍니다 (억울한 학생이 없도록)
-};
+const Guard = (function(){
 
-const Guard = {
-  active:false,
+  /* 설정 — 괄호 안에 두어 밖에서 끄거나 늘릴 수 없게 합니다 */
+  const C = {
+    on          : true,   // false 로 두면 검사를 모두 끕니다
+    minGap      : 150,    // 정답과 정답 사이 최소 간격(ms) — 사람은 이보다 빠를 수 없습니다
+    evenGapSD   : 32,     // 간격이 이만큼도 흔들리지 않으면 기계로 봅니다(ms)
+    evenGapMean : 1200,   // (평균 간격이 이보다 짧을 때만 따집니다)
+    evenGapN    : 8,      // 규칙성을 따지기 시작하는 표본 수
+    strikeMax   : 5,      // 벌점이 이만큼 쌓이면 자동 입력으로 판정
+    blockGlobal : true,   // 판정되면 🌐 전체 랭킹 등록을 막습니다
+    warnInGame  : true,   // 게임 중에 한 번 알려 줍니다 (억울한 학생이 없도록)
 
-  reset(){
-    this.active   = ANTI_MACRO.on;
-    this.keys     = 0;      // 이번 답을 치는 동안 눌린 (진짜) 키 수
-    this.gaps     = [];     // 정답과 정답 사이 간격
-    this.lastAns  = 0;
-    this.strikes  = 0;
-    this.why      = {};     // 무엇에 걸렸는지
-    this.expect   = 0;      // 점수를 따로 세어 두는 값 (무결성 확인용)
-    this.spawned  = 0;      // 이번 판에 떨어진 원소 수
-    this.warned   = false;
-  },
+    /* 손놀림 — 글자를 치는 모양새를 봅니다 */
+    keyGapMin   : 25,     // 글자와 글자 사이가 이보다 짧으면 사람 손이 아닙니다(ms)
+    keySDMin    : 8,      // 글자 간격이 이만큼도 흔들리지 않으면 기계입니다(ms)
+    keySDN      : 4,      // (글자를 이만큼 친 답부터 따집니다)
+    typeToSend  : 30      // 첫 글자에서 제출까지 이보다 짧을 수 없습니다(ms)
+  };
 
-  /* 벌점 — 까닭을 함께 남겨 둡니다 */
-  strike(why, n){
-    if(!this.active) return;
-    this.strikes += (n || 1);
-    this.why[why] = (this.why[why] || 0) + 1;
-    if(ANTI_MACRO.warnInGame && !this.warned && this.strikes >= 2){
-      this.warned = true;
-      showMacroNotice();
-    }
-  },
+  /* 아래 값들은 밖에서 읽지도 고치지도 못합니다 */
+  let active = false, keys = 0, keyT = [], gaps = [], lastAns = 0,
+      strikes = 0, why = {}, expect = 0, spawned = 0, warned = false,
+      startT = 0, gainOpen = false, oddFlow = 0;
 
-  /* 진짜 사람이 누른 키인지 확인합니다.
+  const now = () => performance.now();
+
+  function strike(k, n){
+    if(!active) return;
+    strikes += (n || 1);
+    why[k] = (why[k] || 0) + 1;
+    if(C.warnInGame && !warned && strikes >= 2){ warned = true; showMacroNotice(); }
+  }
+
+  /* ── 사람이 실제로 자판을 눌렀는지 ──────────────────────────────────
+     Guard 가 스스로 듣습니다. 게임이 대신 불러 주지 않으므로
+     매크로가 "키를 쳤다"고 말로만 우길 수 없습니다.
      ※ 한글 입력기는 keydown 의 keyCode 가 229 로 오지만 isTrusted 는 true 이고,
        input 이벤트도 함께 일어나므로 두 가지를 모두 사람 증거로 셉니다.
-       (코드로 input.value 에 값을 넣으면 아무 이벤트도 일어나지 않습니다) */
-  note(e){
-    if(!this.active) return;
-    if(e && e.isTrusted === false){ this.strike('script', 5); return; }
-    this.keys++;
-  },
+       다만 시각은 keydown 만 적습니다. (input 은 keydown 과 같은 순간에 와서
+       한글 입력 때 간격이 0 ms 로 보이기 때문입니다)                      */
+  document.addEventListener('keydown', function(e){
+    if(!active) return;
+    if(e.isTrusted === false){ strike('script', 5); return; }
+    keys++;
+    keyT.push(now());
+    if(keyT.length > 24) keyT.shift();
+  }, true);
 
-  /* 폼 제출 · 엔터처럼 "답을 내는" 이벤트가 진짜인지 확인합니다 */
-  trust(e){
-    if(!this.active) return;
-    if(e && e.isTrusted === false) this.strike('script', 5);
-  },
+  document.addEventListener('input', function(e){
+    if(!active) return;
+    if(e.isTrusted === false){ strike('script', 5); return; }
+    keys++;
+  }, true);
 
-  /* 답이 실제로 처리될 때마다 부릅니다 (hit = 맞혔는지) */
-  answer(hit){
-    if(!this.active) return;
-    const now = performance.now();
+  /* 사람의 손놀림인지 — 이번 답을 치는 동안의 글자 간격을 봅니다 */
+  function checkHand(){
+    if(!keyT.length) return;                       // 키가 아예 없는 건 따로 잡습니다
 
-    /* 글자를 하나도 누르지 않았는데 답이 들어왔다 = 코드로 값을 넣은 것 */
-    if(this.keys === 0) this.strike('nokey', 3);
+    /* ① 첫 글자에서 제출까지 — 사람은 아무리 빨라도 한 호흡이 듭니다 */
+    if(now() - keyT[0] < C.typeToSend) strike('nohand', 3);
 
-    if(hit){
-      if(this.lastAns){
-        const gap = now - this.lastAns;
-        this.gaps.push(gap);
-        if(this.gaps.length > 12) this.gaps.shift();
-        if(gap < ANTI_MACRO.minGap) this.strike('fast', 2);
-        else                        this.checkEven();
-      }
-      this.lastAns = now;
+    if(keyT.length < 2) return;
+    const kg = [];
+    for(let i = 1; i < keyT.length; i++) kg.push(keyT[i] - keyT[i-1]);
+    const mean = kg.reduce((a,b)=>a+b, 0) / kg.length;
+
+    /* ② 글자와 글자 사이가 사람 손이 낼 수 없이 촘촘한 경우 */
+    if(mean < C.keyGapMin){ strike('nohand', 3); return; }
+
+    /* ③ 간격이 매번 똑같은 경우 (오토핫키의 고정 지연) */
+    if(kg.length >= C.keySDN){
+      const sd = Math.sqrt(kg.reduce((a,b)=>a+(b-mean)*(b-mean), 0) / kg.length);
+      if(sd < C.keySDMin) strike('robotype', 3);
     }
-    this.keys = 0;
-  },
+  }
 
   /* 사람은 답하는 간격이 들쭉날쭉합니다.
      기계처럼 일정하면(표준편차가 거의 0) 매크로로 봅니다. */
-  checkEven(){
-    const n = ANTI_MACRO.evenGapN;
-    if(this.gaps.length < n) return;
-    const g = this.gaps.slice(-n);
-    const mean = g.reduce((a,b)=>a+b,0) / n;
-    if(mean > ANTI_MACRO.evenGapMean) return;
-    const sd = Math.sqrt(g.reduce((a,b)=>a+(b-mean)*(b-mean),0) / n);
-    if(sd < ANTI_MACRO.evenGapSD) this.strike('even', 5);
-  },
-
-  /* 점수가 바뀔 때마다 따로 한 번 더 세어 둡니다 */
-  gain(v){ this.expect += v; },
-  spawn(){ this.spawned++; },
-
-  /* 판이 끝났을 때의 판정 — 'ok' · 'macro' · 'tamper' */
-  verdict(game){
-    if(!ANTI_MACRO.on) return {level:'ok', why:[]};
-    const why = [];
-
-    /* ① 점수를 밖에서 건드렸는지 (game.score = 999999 같은 것) */
-    if(Math.round(game.score) !== Math.round(this.expect)) why.push('점수가 맞지 않음');
-    /* ② 떨어진 것보다 많이 정화할 수는 없습니다 */
-    if(game.cleared > this.spawned)                        why.push('정화 수가 맞지 않음');
-    /* ③ 원소 하나로 얻을 수 있는 최대 점수는 840점(💎 황금 × 최대 콤보)입니다 */
-    if(game.score > game.cleared * 840)                    why.push('점수 상한을 넘음');
-    /* ④ 콤보는 정화할 때마다 1씩 오르므로 정화 수를 넘을 수 없습니다 */
-    if(game.maxCombo > game.cleared)                       why.push('콤보가 맞지 않음');
-
-    if(why.length) return {level:'tamper', why};
-
-    if(this.strikes >= ANTI_MACRO.strikeMax){
-      const 이름 = {script:'가짜 키 입력', nokey:'키를 누르지 않고 답함',
-                    fast:'사람이 낼 수 없는 속도', even:'기계처럼 일정한 간격'};
-      return {level:'macro', why:Object.keys(this.why).map(k=>이름[k] || k)};
-    }
-    return {level:'ok', why:[]};
+  function checkEven(){
+    const n = C.evenGapN;
+    if(gaps.length < n) return;
+    const g = gaps.slice(-n);
+    const mean = g.reduce((a,b)=>a+b, 0) / n;
+    if(mean > C.evenGapMean) return;
+    const sd = Math.sqrt(g.reduce((a,b)=>a+(b-mean)*(b-mean), 0) / n);
+    if(sd < C.evenGapSD) strike('even', 5);
   }
-};
+
+  /* 그 시간 동안 원소가 최대 몇 개까지 떨어질 수 있는지
+     — 앱스크립트(서버)에서 쓰는 식과 같습니다 */
+  function maxDrops(sec){
+    let 개수 = 0, 남은 = sec;
+    for(let lv = 1; 남은 > 0 && lv < 500; lv++){
+      const 간격 = Math.max(560, 1800 - (lv-1) * 190);
+      const 구간 = Math.min(30, 남은);
+      개수 += 구간 * 1000 / 간격;
+      남은  -= 구간;
+    }
+    return Math.ceil(개수) + 8;
+  }
+
+  /* 화면을 안 보이게 해 놓고 백그라운드로 돌리는 수법을 봅니다.
+     (document.hidden 을 손대면 원래 없던 자국이 남습니다)
+     드물게 확장 프로그램이 같은 자국을 남길 수 있어 벌점은 낮게 둡니다. */
+  function visForged(){
+    try{ return !!Object.getOwnPropertyDescriptor(document, 'hidden'); }
+    catch(e){ return false; }
+  }
+
+  const api = {
+    get on(){ return C.on; },
+    get blockGlobal(){ return C.blockGlobal; },
+
+    reset(){
+      active  = C.on;
+      keys    = 0;  keyT = [];  gaps = [];  lastAns = 0;
+      strikes = 0;  why  = {};  expect = 0; spawned = 0;
+      warned  = false;  gainOpen = false;  oddFlow = 0;
+      startT  = now();
+    },
+
+    /* 폼 제출 · 엔터처럼 "답을 내는" 이벤트가 진짜인지 확인합니다 */
+    trust(e){
+      if(!active) return;
+      if(e && e.isTrusted === false) strike('script', 5);
+    },
+
+    /* 답이 실제로 처리될 때마다 부릅니다 (hit = 맞혔는지) */
+    answer(hit){
+      if(!active) return;
+      const t = now();
+
+      /* 글자를 하나도 누르지 않았는데 답이 들어왔다 = 코드로 값을 넣은 것 */
+      if(keys === 0) strike('nokey', 3);
+      else           checkHand();
+
+      if(hit){
+        if(lastAns){
+          const gap = t - lastAns;
+          gaps.push(gap);
+          if(gaps.length > 12) gaps.shift();
+          if(gap < C.minGap) strike('fast', 2);
+          else               checkEven();
+        }
+        lastAns = t;
+      }
+      keys = 0; keyT = [];
+      gainOpen = false;              // 점수 → 판정 차례가 제대로 끝났습니다
+    },
+
+    /* 점수가 바뀔 때마다 따로 한 번 더 세어 둡니다.
+       gain 다음에는 반드시 answer 가 와야 합니다. 차례가 어긋나면
+       밖에서 점수만 부풀린 것이므로 표시해 둡니다. */
+    gain(v){
+      if(!active) return;
+      if(gainOpen) oddFlow++;
+      expect  += v;
+      gainOpen = true;
+    },
+
+    spawn(){ if(active) spawned++; },
+
+    /* 판이 끝났을 때의 판정 — 'ok' · 'macro' · 'tamper' */
+    verdict(game){
+      if(!C.on) return {level:'ok', why:[]};
+      const 까닭 = [];
+      const sec = Math.max(1, Math.round((now() - startT) / 1000));
+
+      /* ① 점수를 밖에서 건드렸는지 (game.score = 999999 같은 것) */
+      if(Math.round(game.score) !== Math.round(expect)) 까닭.push('점수가 맞지 않음');
+      /* ② 떨어진 것보다 많이 정화할 수는 없습니다 */
+      if(game.cleared > spawned)                        까닭.push('정화 수가 맞지 않음');
+      /* ③ 원소 하나로 얻을 수 있는 최대 점수는 840점(💎 황금 × 최대 콤보)입니다 */
+      if(game.score > game.cleared * 840)               까닭.push('점수 상한을 넘음');
+      /* ④ 콤보는 정화할 때마다 1씩 오르므로 정화 수를 넘을 수 없습니다 */
+      if(game.maxCombo > game.cleared)                  까닭.push('콤보가 맞지 않음');
+      /* ⑤ 그 시간 동안 떨어질 수 있는 수를 넘을 수 없습니다 */
+      if(spawned > maxDrops(sec))                       까닭.push('시간에 비해 낙하 수가 많음');
+      /* ⑥ 점수를 세는 차례가 어긋났습니다 */
+      if(oddFlow > 0)                                   까닭.push('점수 처리 차례가 어긋남');
+
+      if(까닭.length) return {level:'tamper', why:까닭};
+
+      if(visForged()) strike('novis', 3);
+
+      if(strikes >= C.strikeMax){
+        const 이름 = {script:'가짜 키 입력', nokey:'키를 누르지 않고 답함',
+                      fast:'사람이 낼 수 없는 속도', even:'기계처럼 일정한 간격',
+                      nohand:'사람 손이 아닌 타건', robotype:'글자 간격이 기계처럼 일정',
+                      novis:'화면 숨김 상태를 손댐'};
+        return {level:'macro', why:Object.keys(why).map(k=>이름[k] || k)};
+      }
+      return {level:'ok', why:[]};
+    }
+  };
+
+  return Object.freeze(api);
+})();
+
+/* 바깥 코드가 읽는 설정 — 읽기만 됩니다. 여기를 고쳐도 검사는 꺼지지 않습니다.
+   (진짜 설정은 위 Guard 괄호 안에 있습니다) */
+const ANTI_MACRO = Object.freeze({ get on(){ return Guard.on; },
+                                   get blockGlobal(){ return Guard.blockGlobal; } });
 
 /* 게임 중에 한 번만 뜨는 알림 — 억울하게 막히는 학생이 없도록 미리 알려 줍니다 */
 function showMacroNotice(){
@@ -2405,11 +2510,10 @@ class AcidRainGame{
   }
 
   bindInput(){
-    /* 🤖 "사람이 친 글자"를 세어 둡니다. 캡처 단계에서 먼저 받아 두어야
-       아래 보정 코드가 값을 바꾸기 전의 이벤트를 그대로 볼 수 있습니다.
-       (코드로 input.value 에 값을 넣으면 이 두 이벤트가 아예 일어나지 않습니다) */
-    this.input.addEventListener('keydown', e=>Guard.note(e), true);
-    this.input.addEventListener('input',   e=>Guard.note(e), true);
+    /* 🤖 "사람이 친 글자"는 Guard 가 스스로 세어 둡니다.
+       게임이 대신 불러 주면 매크로가 그 함수를 직접 불러 속일 수 있어서,
+       V6.1 부터는 Guard 가 document 에서 직접 듣습니다.
+       (코드로 input.value 에 값을 넣으면 키 이벤트가 아예 일어나지 않습니다) */
 
     /* 원소 기호 표기법(첫 글자 대문자, 나머지 소문자) 자동 보정
        — 이름 입력 모드에서는 한글을 건드리면 안 되므로 하지 않습니다 */
