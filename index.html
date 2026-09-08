@@ -1445,33 +1445,50 @@ const lerp  = (a,b,t)=>a+(b-a)*t;
 const hueWrap = h => ((h % 360) + 360) % 360;
 
 /* ==========================================================================
-   🤖 매크로(자동 입력) 방지  ·  V6.1
+   🤖 매크로(자동 입력) 방지  ·  V6.2
 
-   ▸ 무엇을 잡을 수 있나
+   ▸ V6.2 에서 무엇이 달라졌나 — "억울한 학생 0명"이 먼저입니다
+     V6.1 은 답 하나가 이상해 보이면 바로 벌점을 주고, 벌점이 5점만 쌓여도
+     자동 입력으로 판정했습니다. 그런데 실제로 손으로 치는 학생도
+       · 한 글자짜리 기호(H · O · N · K …)를 왼손으로 치면서
+         오른손으로 엔터를 거의 동시에 누르고 (두 키 간격 10~20 ms)
+       · 틀린 답을 지우려고 백스페이스를 꾹 눌러 자동 반복이 걸리고
+         (같은 간격으로 키가 줄줄이 들어와 "기계처럼 일정"으로 보임)
+       · 확장 프로그램이 document.hidden 을 건드려 놓기도 합니다
+     이 세 가지만으로 벌점 5점이 넘어 전체 랭킹이 막혔습니다.
+     실제로 게임한 기록이 막히는 것은 매크로를 놓치는 것보다 나쁩니다.
+
+   ▸ 그래서 판정 방식을 바꿨습니다 — 낱개가 아니라 "한 판 전체의 모양새"
+     사람은 들쭉날쭉합니다. 백 번 답하면 그중 몇 번은 기계처럼 보입니다.
+     매크로는 반대로 판 내내 한결같습니다. 그래서
+       ① 답 하나하나에는 "수상한가"만 표시해 둡니다 (벌점을 주지 않습니다)
+       ② 판이 끝났을 때 수상한 답이 전체의 몇 %인지를 봅니다.
+     답이 10개도 안 되면 아예 판정하지 않고, 수상한 답이 8개 이상이면서
+     전체 답의 55% 를 넘을 때만 자동 입력으로 봅니다.
+     → 사람은 그 비율까지 갈 수 없고, 매크로는 거의 100% 가 나옵니다.
+
+   ▸ 숫자도 모두 "사람은 도저히 못 한다" 쪽으로 다시 잡았습니다
+     · 글자 사이 간격 25 ms → 12 ms (사람의 양손 교차 타건은 10~30 ms 가 흔합니다)
+     · 첫 글자 → 제출 30 ms → 15 ms, 그것도 글자를 2자 이상 쳤을 때만 봅니다
+       (한 글자 기호는 글자와 엔터가 거의 동시에 눌리는 것이 정상입니다)
+     · 자판 자동 반복(키를 꾹 누른 것)은 손놀림 계산에서 뺍니다
+     · 엔터 · 시프트 같은 키도 손놀림 계산에서 뺍니다
+     · document.hidden 검사는 확장 프로그램도 같은 자국을 남겨 아예 뺐습니다
+
+   ▸ 무엇을 잡을 수 있나 — 잡는 힘은 그대로입니다
      ① 코드로 답을 집어넣는 방식 (개발자 도구 · 확장 프로그램 · 북마클릿)
-        → 사람이 자판을 누르면 반드시 키 이벤트가 생깁니다.
-          글자를 한 번도 누르지 않았는데 답이 들어오면 사람이 아닙니다.
-        → 스크립트가 만들어 낸 가짜 키 이벤트는 isTrusted 가 false 입니다.
-          (크롬은 이 값을 이벤트마다 못 고치게 박아 두므로 위조할 수 없습니다)
+        → 글자를 한 번도 누르지 않고 답이 들어오면 그 답은 수상한 답이 됩니다.
+          매크로는 판 내내 그러므로 비율이 100% 가 되어 확실히 잡힙니다.
+        → 스크립트가 만든 가짜 키 이벤트는 isTrusted 가 false 입니다.
+          답 입력칸에 가짜 이벤트가 2번만 들어와도 그것만으로 판정합니다.
+          (크롬은 이 값을 못 고치게 박아 두므로 위조할 수 없습니다)
      ② 자판을 대신 눌러 주는 매크로 프로그램 (오토핫키 같은 것)
-        → 가짜 키 이벤트는 아니지만 사람이 낼 수 없는 속도로 답하고
-          간격이 시계처럼 일정합니다. 그 두 가지를 봅니다.
-        → 손놀림도 봅니다. 사람은 글자와 글자 사이가 최소 수십 ms 벌어지고
-          그 간격이 매번 흔들립니다. 기계는 0 ms 이거나 늘 똑같습니다.
+        → 사람이 낼 수 없는 속도와 시계처럼 일정한 간격을 봅니다.
+          한 번이 아니라 판 내내 그런지를 봅니다.
      ③ 점수를 직접 고치는 방식 (game.score = 999999)
         → 점수·정화 수를 따로 세어 두고 끝날 때 맞춰 봅니다.
+          이 검산은 어림짐작이 아니라 산수라 예전 그대로 두었습니다.
           그 값들은 아래 괄호 안(클로저)에 숨겨 두어 밖에서 못 고칩니다.
-
-   ▸ V6.1 에서 손본 곳 — 실제로 매크로를 만들어 시험해 보고 고쳤습니다
-     · 설정과 벌점을 밖에서 못 만지게 괄호 안으로 감췄습니다.
-       (예전에는 ANTI_MACRO.on = false 한 줄이면 검사가 통째로 꺼졌습니다)
-     · 키를 세는 일을 게임이 대신 불러 주지 않고 Guard 가 스스로 듣습니다.
-       (예전에는 Guard.note({}) 를 직접 불러 "키 쳤다"고 속일 수 있었습니다)
-     · 검산용 값(expect·spawned)을 숨겨, 앞뒤를 맞춰 놓고 점수만 바꾸는
-       수법을 막았습니다. 부르는 차례가 어긋나도 잡습니다.
-     · 시간에 견주어 떨어질 수 있는 원소 수를 넘으면 조작으로 봅니다.
-       (앱스크립트에서 쓰는 식과 같습니다)
-     · 손놀림(글자 치는 간격) 검사를 새로 넣었습니다.
 
    ▸ 못 잡는 것 — 솔직하게 적어 둡니다
      이 게임은 HTML 한 장이라 소스가 학생에게도 그대로 보입니다.
@@ -1489,33 +1506,60 @@ const Guard = (function(){
   /* 설정 — 괄호 안에 두어 밖에서 끄거나 늘릴 수 없게 합니다 */
   const C = {
     on          : true,   // false 로 두면 검사를 모두 끕니다
-    minGap      : 150,    // 정답과 정답 사이 최소 간격(ms) — 사람은 이보다 빠를 수 없습니다
-    evenGapSD   : 32,     // 간격이 이만큼도 흔들리지 않으면 기계로 봅니다(ms)
-    evenGapMean : 1200,   // (평균 간격이 이보다 짧을 때만 따집니다)
-    evenGapN    : 8,      // 규칙성을 따지기 시작하는 표본 수
-    strikeMax   : 5,      // 벌점이 이만큼 쌓이면 자동 입력으로 판정
-    blockGlobal : true,   // 판정되면 🌐 전체 랭킹 등록을 막습니다
-    warnInGame  : true,   // 게임 중에 한 번 알려 줍니다 (억울한 학생이 없도록)
 
-    /* 손놀림 — 글자를 치는 모양새를 봅니다 */
-    keyGapMin   : 25,     // 글자와 글자 사이가 이보다 짧으면 사람 손이 아닙니다(ms)
-    keySDMin    : 8,      // 글자 간격이 이만큼도 흔들리지 않으면 기계입니다(ms)
-    keySDN      : 4,      // (글자를 이만큼 친 답부터 따집니다)
-    typeToSend  : 30      // 첫 글자에서 제출까지 이보다 짧을 수 없습니다(ms)
+    /* ── 판정 문턱 : 낱개가 아니라 한 판 전체를 보고 정합니다 ── */
+    minAnswers  : 10,     // 답이 이만큼도 안 되면 판정하지 않습니다 (표본 부족)
+    susMin      : 8,      // 수상한 답이 이만큼은 되어야 하고
+    susRatio    : 0.55,   // 그것이 전체 답의 이 비율을 넘어야 판정합니다
+    scriptMin   : 2,      // 답 입력칸에 들어온 가짜 이벤트 — 이만큼이면 그것만으로 판정
+
+    /* ── 답과 답 사이 ── */
+    minGap      : 90,     // 정답 두 개를 이보다 빨리 낼 수는 없습니다(ms)
+    evenGapSD   : 15,     // 답 간격이 이만큼도 흔들리지 않으면 기계로 봅니다(ms)
+    evenGapMean : 900,    // (평균 간격이 이보다 짧을 때만 따집니다)
+    evenGapN    : 10,     // 규칙성을 따지기 시작하는 표본 수
+
+    /* ── 손놀림 : 글자를 치는 모양새 ── */
+    keyGapMin   : 12,     // 글자 사이 평균이 이보다 짧으면 사람 손이 아닙니다(ms)
+    keyGapN     : 3,      // (글자 사이 간격이 이만큼 모인 답부터 따집니다)
+    keySDMin    : 3,      // 글자 간격이 이만큼도 흔들리지 않으면 기계입니다(ms)
+    keySDN      : 5,      // (간격이 이만큼 모인 답부터 따집니다)
+    keySDMean   : 400,    // (평균 간격이 이보다 짧을 때만 따집니다)
+    typeToSend  : 15,     // 첫 글자에서 제출까지(ms) — 글자 2자 이상일 때만 봅니다
+
+    blockGlobal : true,   // 판정되면 🌐 전체 랭킹 등록을 막습니다
+    warnInGame  : true    // 게임 중에 한 번 알려 줍니다 (억울한 학생이 없도록)
   };
 
   /* 아래 값들은 밖에서 읽지도 고치지도 못합니다 */
   let active = false, keys = 0, keyT = [], gaps = [], lastAns = 0,
-      strikes = 0, why = {}, expect = 0, spawned = 0, warned = false,
+      answers = 0, sus = 0, scriptHits = 0, why = {},
+      expect = 0, spawned = 0, warned = false,
       startT = 0, gainOpen = false, oddFlow = 0;
 
   const now = () => performance.now();
 
-  function strike(k, n){
-    if(!active) return;
-    strikes += (n || 1);
-    why[k] = (why[k] || 0) + 1;
-    if(C.warnInGame && !warned && strikes >= 2){ warned = true; showMacroNotice(); }
+  /* 손으로 글자를 치는 키인지 — 엔터·시프트 같은 키는 손놀림 계산에서 뺍니다.
+     (한 글자 기호를 칠 때 글자와 엔터가 거의 동시에 눌리는 것이 정상이라,
+      엔터를 함께 세면 빠른 학생이 기계로 오해받습니다)
+     한글 입력기와 모바일 자판은 key 가 'Process' · 'Unidentified' 로 오는데
+     그것도 사람이 글자를 친 것이므로 셉니다. */
+  const 글자아님 = {Enter:1, Tab:1, Shift:1, Control:1, Alt:1, Meta:1,
+                    CapsLock:1, Escape:1, ArrowLeft:1, ArrowRight:1,
+                    ArrowUp:1, ArrowDown:1, Home:1, End:1, PageUp:1,
+                    PageDown:1, Insert:1, ContextMenu:1, NumLock:1,
+                    ScrollLock:1, Pause:1, Dead:1, F1:1, F2:1, F3:1, F4:1,
+                    F5:1, F6:1, F7:1, F8:1, F9:1, F10:1, F11:1, F12:1};
+
+  /* 가짜 이벤트는 답 입력칸을 겨냥한 것만 셉니다.
+     닉네임 같은 다른 칸은 비밀번호 관리자·자동 완성 같은 정상적인 프로그램이
+     가짜 이벤트를 만들어 넣는 일이 있기 때문입니다. */
+  function 답칸겨냥(e){
+    const t = e && e.target;
+    if(!t || !t.tagName) return true;
+    if(t.id === 'answerInput') return true;
+    const g = t.tagName;
+    return !(g === 'INPUT' || g === 'TEXTAREA' || g === 'SELECT');
   }
 
   /* ── 사람이 실제로 자판을 눌렀는지 ──────────────────────────────────
@@ -1527,50 +1571,56 @@ const Guard = (function(){
        한글 입력 때 간격이 0 ms 로 보이기 때문입니다)                      */
   document.addEventListener('keydown', function(e){
     if(!active) return;
-    if(e.isTrusted === false){ strike('script', 5); return; }
+    if(e.isTrusted === false){ if(답칸겨냥(e)) scriptHits++; return; }
     keys++;
+    /* 키를 꾹 눌러 자동 반복이 걸린 것은 손놀림이 아니므로 시각을 적지 않습니다.
+       (틀린 답을 지우려고 백스페이스를 꾹 누르는 흔한 버릇이
+        "기계처럼 일정한 간격"으로 오해받던 자리입니다) */
+    if(e.repeat) return;
+    if(e.key && 글자아님[e.key]) return;
     keyT.push(now());
     if(keyT.length > 24) keyT.shift();
   }, true);
 
   document.addEventListener('input', function(e){
     if(!active) return;
-    if(e.isTrusted === false){ strike('script', 5); return; }
+    if(e.isTrusted === false){ if(답칸겨냥(e)) scriptHits++; return; }
     keys++;
   }, true);
 
-  /* 사람의 손놀림인지 — 이번 답을 치는 동안의 글자 간격을 봅니다 */
+  /* 사람의 손놀림인지 — 이번 답을 치는 동안의 글자 간격을 봅니다.
+     수상하면 까닭을, 아니면 null 을 돌려줍니다. (벌점은 주지 않습니다) */
   function checkHand(){
-    if(!keyT.length) return;                       // 키가 아예 없는 건 따로 잡습니다
+    if(keyT.length < 2) return null;      // 한 글자짜리 기호는 따지지 않습니다
 
-    /* ① 첫 글자에서 제출까지 — 사람은 아무리 빨라도 한 호흡이 듭니다 */
-    if(now() - keyT[0] < C.typeToSend) strike('nohand', 3);
+    /* ① 첫 글자에서 제출까지 — 글자를 2자 이상 쳤는데도 한 호흡이 없는 경우 */
+    if(now() - keyT[0] < C.typeToSend) return 'nohand';
 
-    if(keyT.length < 2) return;
     const kg = [];
     for(let i = 1; i < keyT.length; i++) kg.push(keyT[i] - keyT[i-1]);
     const mean = kg.reduce((a,b)=>a+b, 0) / kg.length;
 
     /* ② 글자와 글자 사이가 사람 손이 낼 수 없이 촘촘한 경우 */
-    if(mean < C.keyGapMin){ strike('nohand', 3); return; }
+    if(kg.length >= C.keyGapN && mean < C.keyGapMin) return 'nohand';
 
     /* ③ 간격이 매번 똑같은 경우 (오토핫키의 고정 지연) */
-    if(kg.length >= C.keySDN){
+    if(kg.length >= C.keySDN && mean < C.keySDMean){
       const sd = Math.sqrt(kg.reduce((a,b)=>a+(b-mean)*(b-mean), 0) / kg.length);
-      if(sd < C.keySDMin) strike('robotype', 3);
+      if(sd < C.keySDMin) return 'robotype';
     }
+    return null;
   }
 
   /* 사람은 답하는 간격이 들쭉날쭉합니다.
-     기계처럼 일정하면(표준편차가 거의 0) 매크로로 봅니다. */
+     기계처럼 일정하면(표준편차가 거의 0) 수상한 답으로 표시합니다. */
   function checkEven(){
     const n = C.evenGapN;
-    if(gaps.length < n) return;
+    if(gaps.length < n) return false;
     const g = gaps.slice(-n);
     const mean = g.reduce((a,b)=>a+b, 0) / n;
-    if(mean > C.evenGapMean) return;
+    if(mean > C.evenGapMean) return false;
     const sd = Math.sqrt(g.reduce((a,b)=>a+(b-mean)*(b-mean), 0) / n);
-    if(sd < C.evenGapSD) strike('even', 5);
+    return sd < C.evenGapSD;
   }
 
   /* 그 시간 동안 원소가 최대 몇 개까지 떨어질 수 있는지
@@ -1586,14 +1636,6 @@ const Guard = (function(){
     return Math.ceil(개수) + 8;
   }
 
-  /* 화면을 안 보이게 해 놓고 백그라운드로 돌리는 수법을 봅니다.
-     (document.hidden 을 손대면 원래 없던 자국이 남습니다)
-     드물게 확장 프로그램이 같은 자국을 남길 수 있어 벌점은 낮게 둡니다. */
-  function visForged(){
-    try{ return !!Object.getOwnPropertyDescriptor(document, 'hidden'); }
-    catch(e){ return false; }
-  }
-
   const api = {
     get on(){ return C.on; },
     get blockGlobal(){ return C.blockGlobal; },
@@ -1601,7 +1643,8 @@ const Guard = (function(){
     reset(){
       active  = C.on;
       keys    = 0;  keyT = [];  gaps = [];  lastAns = 0;
-      strikes = 0;  why  = {};  expect = 0; spawned = 0;
+      answers = 0;  sus  = 0;   scriptHits = 0;  why = {};
+      expect  = 0;  spawned = 0;
       warned  = false;  gainOpen = false;  oddFlow = 0;
       startT  = now();
     },
@@ -1609,28 +1652,41 @@ const Guard = (function(){
     /* 폼 제출 · 엔터처럼 "답을 내는" 이벤트가 진짜인지 확인합니다 */
     trust(e){
       if(!active) return;
-      if(e && e.isTrusted === false) strike('script', 5);
+      if(e && e.isTrusted === false && 답칸겨냥(e)) scriptHits++;
     },
 
-    /* 답이 실제로 처리될 때마다 부릅니다 (hit = 맞혔는지) */
+    /* 답이 실제로 처리될 때마다 부릅니다 (hit = 맞혔는지)
+       이번 답이 수상해 보이면 표시만 해 둡니다. 판정은 판이 끝날 때 합니다. */
     answer(hit){
       if(!active) return;
       const t = now();
+      answers++;
+      let 표 = null;                        // 이번 답이 수상해 보이는 까닭 (하나만)
 
       /* 글자를 하나도 누르지 않았는데 답이 들어왔다 = 코드로 값을 넣은 것 */
-      if(keys === 0) strike('nokey', 3);
-      else           checkHand();
+      if(keys === 0) 표 = 'nokey';
+      else           표 = checkHand();
 
       if(hit){
         if(lastAns){
           const gap = t - lastAns;
           gaps.push(gap);
-          if(gaps.length > 12) gaps.shift();
-          if(gap < C.minGap) strike('fast', 2);
-          else               checkEven();
+          if(gaps.length > 16) gaps.shift();
+          if(!표 && gap < C.minGap) 표 = 'fast';
+          if(!표 && checkEven())    표 = 'even';
         }
         lastAns = t;
       }
+
+      if(표){
+        sus++;
+        why[표] = (why[표] || 0) + 1;
+        /* 게임 중 알림도 "이대로 가면 정말 막힐 때"만 띄웁니다 */
+        if(C.warnInGame && !warned && sus >= 5 && sus >= answers * C.susRatio){
+          warned = true; showMacroNotice();
+        }
+      }
+
       keys = 0; keyT = [];
       gainOpen = false;              // 점수 → 판정 차례가 제대로 끝났습니다
     },
@@ -1649,35 +1705,48 @@ const Guard = (function(){
 
     /* 판이 끝났을 때의 판정 — 'ok' · 'macro' · 'tamper' */
     verdict(game){
-      if(!C.on) return {level:'ok', why:[]};
+      if(!C.on) return {level:'ok', why:[], detail:''};
       const 까닭 = [];
       const sec = Math.max(1, Math.round((now() - startT) / 1000));
 
-      /* ① 점수를 밖에서 건드렸는지 (game.score = 999999 같은 것) */
+      /* ── ① 점수 검산 — 어림짐작이 아니라 산수입니다 ── */
+      /* 점수를 밖에서 건드렸는지 (game.score = 999999 같은 것) */
       if(Math.round(game.score) !== Math.round(expect)) 까닭.push('점수가 맞지 않음');
-      /* ② 떨어진 것보다 많이 정화할 수는 없습니다 */
+      /* 떨어진 것보다 많이 정화할 수는 없습니다 */
       if(game.cleared > spawned)                        까닭.push('정화 수가 맞지 않음');
-      /* ③ 원소 하나로 얻을 수 있는 최대 점수는 840점(💎 황금 × 최대 콤보)입니다 */
+      /* 원소 하나로 얻을 수 있는 최대 점수는 840점(💎 황금 × 최대 콤보)입니다 */
       if(game.score > game.cleared * 840)               까닭.push('점수 상한을 넘음');
-      /* ④ 콤보는 정화할 때마다 1씩 오르므로 정화 수를 넘을 수 없습니다 */
+      /* 콤보는 정화할 때마다 1씩 오르므로 정화 수를 넘을 수 없습니다 */
       if(game.maxCombo > game.cleared)                  까닭.push('콤보가 맞지 않음');
-      /* ⑤ 그 시간 동안 떨어질 수 있는 수를 넘을 수 없습니다 */
+      /* 그 시간 동안 떨어질 수 있는 수를 넘을 수 없습니다 */
       if(spawned > maxDrops(sec))                       까닭.push('시간에 비해 낙하 수가 많음');
-      /* ⑥ 점수를 세는 차례가 어긋났습니다 */
+      /* 점수를 세는 차례가 어긋났습니다 */
       if(oddFlow > 0)                                   까닭.push('점수 처리 차례가 어긋남');
 
-      if(까닭.length) return {level:'tamper', why:까닭};
+      if(까닭.length) return {level:'tamper', why:까닭, detail:''};
 
-      if(visForged()) strike('novis', 3);
+      const 이름 = {script:'답 입력칸에 가짜 키 입력이 들어옴',
+                    nokey:'글자를 누르지 않고 답함',
+                    fast:'사람이 낼 수 없는 속도',
+                    even:'기계처럼 일정한 답 간격',
+                    nohand:'사람 손이 아닌 타건',
+                    robotype:'글자 간격이 기계처럼 일정'};
 
-      if(strikes >= C.strikeMax){
-        const 이름 = {script:'가짜 키 입력', nokey:'키를 누르지 않고 답함',
-                      fast:'사람이 낼 수 없는 속도', even:'기계처럼 일정한 간격',
-                      nohand:'사람 손이 아닌 타건', robotype:'글자 간격이 기계처럼 일정',
-                      novis:'화면 숨김 상태를 손댐'};
-        return {level:'macro', why:Object.keys(why).map(k=>이름[k] || k)};
-      }
-      return {level:'ok', why:[]};
+      /* ── ② 입력칸에 꽂힌 가짜 이벤트 — 사람 손으로는 만들 수 없습니다 ── */
+      if(scriptHits >= C.scriptMin)
+        return {level:'macro', why:[이름.script],
+                detail:'가짜 이벤트 ' + scriptHits + '회'};
+
+      /* ── ③ 나머지는 "한 판 전체의 모양새"로만 판정합니다 ──
+         사람도 백 번 답하면 몇 번은 기계처럼 보입니다. 그것으로는 막지 않습니다.
+         매크로는 판 내내 한결같으므로 그 비율이 곧 증거가 됩니다. */
+      if(answers < C.minAnswers)      return {level:'ok', why:[], detail:''};
+      if(sus < C.susMin)              return {level:'ok', why:[], detail:''};
+      if(sus < answers * C.susRatio)  return {level:'ok', why:[], detail:''};
+
+      return {level:'macro',
+              why: Object.keys(why).sort((a,b)=>why[b]-why[a]).map(k=>이름[k] || k),
+              detail: '답 ' + answers + '개 중 ' + sus + '개'};
     }
   };
 
@@ -2955,7 +3024,8 @@ const Ranking = {
     if(this.guard.level === 'macro' && ANTI_MACRO.blockGlobal){
       st.className = 'save-status warn';
       st.innerHTML = '🤖 자동 입력으로 보이는 기록이라 🌐 전체 랭킹에는 올릴 수 없어요.<br>' +
-                     '<span style="color:#7f92b5">📱 기기 랭킹에는 저장됩니다. 직접 손으로 해 주세요.</span>';
+                     '<span style="color:#7f92b5">📱 기기 랭킹에는 저장됩니다. 직접 손으로 해 주세요.</span>' +
+                     this.guardWhy();
       return;
     }
 
@@ -2970,6 +3040,17 @@ const Ranking = {
       오늘 > 0 ? '<br><span style="color:#d9c48f">📌 이 컴퓨터에서 오늘 ' + 오늘 + '번 등록했어요.</span>'
     : prev    ? '<br><span style="color:#d9c48f">📌 이 컴퓨터에서 이미 등록한 적이 있어요.</span>'
     : '');
+  },
+
+  /* 🤖 자동 입력으로 본 까닭을 한 줄로 알려 줍니다.
+     막힌 학생이 "왜 나만?" 하고 답답해하지 않도록, 또 선생님이 억울한 판정을
+     바로 알아보실 수 있도록 이유를 감추지 않고 그대로 보여 줍니다. */
+  guardWhy(){
+    const g = this.guard;
+    if(!g || !g.why || !g.why.length) return '';
+    return '<br><span style="color:#7f92b5;font-size:.92em">까닭 : ' +
+           this.esc(g.why.join(' · ')) +
+           (g.detail ? ' (' + this.esc(g.detail) + ')' : '') + '</span>';
   },
 
   /* 🚫 닉네임 규칙 확인 — 여기에는 "규칙"만 두고 "금칙어 목록"은 두지 않습니다.
@@ -3134,7 +3215,8 @@ const Ranking = {
     if(this.guard && this.guard.level === 'macro' && ANTI_MACRO.blockGlobal){
       st.className = 'save-status warn';
       st.innerHTML = '📱 이 기기의 랭킹에만 저장했습니다.<br>' +
-                     '🤖 자동 입력으로 보이는 기록은 🌐 전체 랭킹에 올리지 않습니다.';
+                     '🤖 자동 입력으로 보이는 기록은 🌐 전체 랭킹에 올리지 않습니다.' +
+                     this.guardWhy();
       return;
     }
 
